@@ -11,13 +11,9 @@ public final class AppCoordinator: Coordinator {
     public var childCoordinators: [Coordinator] = []
     public var navigationController: UINavigationController
     public let tabBarController = MainTabBarController()
-//    private let window: UIWindow
-//    private let tabBarController: MainTabBarController
     
-    public init(/*window: UIWindow*/) {
-//        self.window = window
+    public init() {
         self.navigationController = UINavigationController()
-//        self.tabBarController = MainTabBarController()
     }
     
     public func start() {
@@ -32,10 +28,6 @@ public final class AppCoordinator: Coordinator {
         addChild(settingsCoordinator)
         settingsCoordinator.start()
         
-//        tabBarController.viewControllers = [homeNav, settingsNav]
-//        
-//        window.rootViewController = tabBarController
-//        window.makeKeyAndVisible()
         tabBarController.viewControllers = [homeNav, settingsNav]
     }
 }

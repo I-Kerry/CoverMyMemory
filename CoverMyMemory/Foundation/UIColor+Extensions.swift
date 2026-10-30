@@ -14,20 +14,20 @@ public extension UIColor {
     
     static let appCardBackground = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1.0) // #1C1C1E
+            ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1.0)
             : UIColor.white
     }
     
     static let appCardCompleted = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.047, green: 0.169, blue: 0.106, alpha: 1.0) // #0C2B1B
-            : UIColor(red: 0.922, green: 0.976, blue: 0.945, alpha: 1.0) // #EBF9F1
+            ? UIColor(red: 0.047, green: 0.169, blue: 0.106, alpha: 1.0)
+            : UIColor(red: 0.922, green: 0.976, blue: 0.945, alpha: 1.0)
     }
     
     static let appCheckmarkGreen = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 1.0) // #22C55E
-            : UIColor(red: 0.082, green: 0.502, blue: 0.239, alpha: 1.0) // #15803D
+            ? UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 1.0)
+            : UIColor(red: 0.082, green: 0.502, blue: 0.239, alpha: 1.0)
     }
     
     static let appTextPrimary = UIColor.label

@@ -97,7 +97,6 @@ public final class HomeViewController: UIViewController {
             
             statusLabel.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
             statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.Layout.horizontalInset),
-//            statusLabel.leadingAnchor.greaterThanOrEqualTo(titleLabel.trailingAnchor, constant: Constants.Spacing.small)
             statusLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: Constants.Spacing.small)
         ])
     }

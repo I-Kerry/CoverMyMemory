@@ -9,18 +9,18 @@ import Foundation
 
 public enum AssetCatalog {
     public enum Colors {
-        public static let accent = "AccentColor" // #007AFF
-        public static let backgroundPrimary = "BackgroundPrimary" // Dynamic System Background
-        public static let backgroundSecondary = "BackgroundSecondary" // Dynamic Secondary System Background
-        public static let backgroundGrouped = "BackgroundGrouped" // Dynamic Grouped Background
-        public static let cardBackground = "CardBackground" // Light: #FFFFFF, Dark: #1C1C1E
-        public static let cardCompleted = "CardCompleted" // Light: #EBF9F1, Dark: #0C2B1B
-        public static let checkmarkGreen = "CheckmarkGreen" // Light: #15803D, Dark: #22C55E
+        public static let accent = "AccentColor"
+        public static let backgroundPrimary = "BackgroundPrimary"
+        public static let backgroundSecondary = "BackgroundSecondary"
+        public static let backgroundGrouped = "BackgroundGrouped"
+        public static let cardBackground = "CardBackground"
+        public static let cardCompleted = "CardCompleted"
+        public static let checkmarkGreen = "CheckmarkGreen"
         public static let textPrimary = "TextPrimary"
         public static let textSecondary = "TextSecondary"
-        public static let textGreen = "TextGreen" // Light: #15803D, Dark: #4ADE80
+        public static let textGreen = "TextGreen"
         public static let separator = "SeparatorColor"
-        public static let destructive = "DestructiveRed" // #FF3B30
+        public static let destructive = "DestructiveRed"
     }
     
     public enum Icons {
