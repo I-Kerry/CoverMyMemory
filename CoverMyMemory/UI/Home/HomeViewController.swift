@@ -33,9 +33,9 @@ public final class HomeViewController: UIViewController {
     
     public init() {
         super.init(nibName: nil, bundle: nil)
-        title = "Home"
+        title = nil
         tabBarItem = UITabBarItem(
-            title: "Home",
+            title: nil,
             image: UIImage(systemName: AssetCatalog.Icons.home),
             selectedImage: UIImage(systemName: AssetCatalog.Icons.home)
         )

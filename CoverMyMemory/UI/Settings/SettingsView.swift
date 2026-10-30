@@ -35,85 +35,83 @@ public struct SettingsView: View {
     }
     
     public var body: some View {
-        NavigationStack {
-            Form {
-                // MARK: - Notifications Section
-                Section {
-                    Toggle("Notifications", isOn: $notificationsEnabled)
-                        .tint(.appAccent)
-                } header: {
-                    Text("NOTIFICATIONS")
-                } footer: {
-                    Text("Get a gentle nudge when a reminder is due. Sound and delivery are managed in iOS Settings.")
-                        .font(.appCaption)
-                }
-                
-                // MARK: - Appearance Section
-                Section {
-                    ForEach(AppTheme.allCases) { theme in
-                        Button(action: {
-                            selectedAppearance = theme.rawValue
-                        }) {
-                            HStack(spacing: Constants.Spacing.medium) {
-                                Image(systemName: theme.iconName)
-                                    .frame(width: 24)
-                                    .foregroundColor(.appTextPrimary)
-                                
-                                Text(theme.rawValue)
-                                    .foregroundColor(.appTextPrimary)
-                                
-                                Spacer()
-                                
-                                if selectedAppearance == theme.rawValue {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.appAccent)
-                                        .font(.system(size: 14, weight: .bold))
-                                }
+        Form {
+            // MARK: - Notifications Section
+            Section {
+                Toggle("Notifications", isOn: $notificationsEnabled)
+                    .tint(.appAccent)
+            } header: {
+                Text("NOTIFICATIONS")
+            } footer: {
+                Text("Get a gentle nudge when a reminder is due. Sound and delivery are managed in iOS Settings.")
+                    .font(.appCaption)
+            }
+            
+            // MARK: - Appearance Section
+            Section {
+                ForEach(AppTheme.allCases) { theme in
+                    Button(action: {
+                        selectedAppearance = theme.rawValue
+                    }) {
+                        HStack(spacing: Constants.Spacing.medium) {
+                            Image(systemName: theme.iconName)
+                                .frame(width: 24)
+                                .foregroundColor(.appTextPrimary)
+                            
+                            Text(theme.rawValue)
+                                .foregroundColor(.appTextPrimary)
+                            
+                            Spacer()
+                            
+                            if selectedAppearance == theme.rawValue {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.appAccent)
+                                    .font(.system(size: 14, weight: .bold))
                             }
                         }
                     }
-                } header: {
-                    Text("APPEARANCE")
-                } footer: {
-                    Text("System follows your device’s appearance.")
-                        .font(.appCaption)
                 }
-                
-                // MARK: - Data Section
-                Section {
-                    Button(role: .destructive, action: {
-                        showingResetConfirmation = true
-                    }) {
-                        Text("Reset data")
-                            .foregroundColor(.appDestructive)
-                    }
-                } header: {
-                    Text("DATA")
-                } footer: {
-                    Text("Permanently remove all reminders, people, and photos from this device.")
-                        .font(.appCaption)
+            } header: {
+                Text("APPEARANCE")
+            } footer: {
+                Text("System follows your device’s appearance.")
+                    .font(.appCaption)
+            }
+            
+            // MARK: - Data Section
+            Section {
+                Button(role: .destructive, action: {
+                    showingResetConfirmation = true
+                }) {
+                    Text("Reset data")
+                        .foregroundColor(.appDestructive)
                 }
-                
-                // MARK: - Version Info
-                Section {
-                    HStack {
-                        Text("Version")
-                            .foregroundColor(.appTextPrimary)
-                        Spacer()
-                        Text("1.0.0")
-                            .foregroundColor(.appTextSecondary)
-                    }
+            } header: {
+                Text("DATA")
+            } footer: {
+                Text("Permanently remove all reminders, people, and photos from this device.")
+                    .font(.appCaption)
+            }
+            
+            // MARK: - Version Info
+            Section {
+                HStack {
+                    Text("Version")
+                        .foregroundColor(.appTextPrimary)
+                    Spacer()
+                    Text("1.0.0")
+                        .foregroundColor(.appTextSecondary)
                 }
             }
-            .navigationTitle("Settings")
-            .confirmationDialog("Reset all data?", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
-                Button("Reset data", role: .destructive) {
-                    onResetData?()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This action cannot be undone.")
+        }
+        .navigationTitle("Settings")
+        .confirmationDialog("Reset all data?", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
+            Button("Reset data", role: .destructive) {
+                onResetData?()
             }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This action cannot be undone.")
         }
     }
 }
