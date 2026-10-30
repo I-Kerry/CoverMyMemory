@@ -11,7 +11,7 @@ import SwiftUI
 struct CoverMyMemoryApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabBarWrapper()
         }
     }
 }
