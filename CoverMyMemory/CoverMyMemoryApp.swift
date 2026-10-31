@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct CoverMyMemoryApp: App {
@@ -13,5 +14,6 @@ struct CoverMyMemoryApp: App {
         WindowGroup {
             MainTabBarWrapper()
         }
+        .modelContainer(for: [Reminder.self, Person.self])
     }
 }
