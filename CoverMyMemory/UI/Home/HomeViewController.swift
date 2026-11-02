@@ -69,9 +69,10 @@ public final class HomeViewController: UIViewController {
     }()
     
     private var dateNavButton: UIBarButtonItem?
+    private weak var activeDatePicker: UIDatePicker?
     
     public init(viewModel: HomeViewModel? = nil) {
-        self.viewModel = viewModel
+        self.viewModel = viewModel ?? HomeViewModel()
         super.init(nibName: nil, bundle: nil)
         tabBarItem = UITabBarItem(
             title: "Home",
@@ -95,15 +96,17 @@ public final class HomeViewController: UIViewController {
         setupFloatingMenus()
         bindViewModel()
         
-        Task { [weak self] in
-            self?.viewModel?.loadData
+        Task { @MainActor [weak self] in
+            guard let viewModel = self?.viewModel else { return }
+            await viewModel.loadData()
         }
     }
     
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        Task { [weak self] in
-            await self?.viewModel?.loadData()
+        Task { @MainActor [weak self] in
+            guard let viewModel = self?.viewModel else { return }
+            await viewModel.loadData()
         }
     }
     
@@ -217,7 +220,7 @@ public final class HomeViewController: UIViewController {
                 self?.dataSource?.apply(snapshot, animatingDifferences: true)
             }
             .store(in: &cancellables)
-
+        
         viewModel.$statusText
             .receive(on: RunLoop.main)
             .sink { [weak self] text in
@@ -243,7 +246,7 @@ public final class HomeViewController: UIViewController {
                 self?.updateFilterMenu()
             }
         }
-        filterButton.menu = UIMenu(title: "Filter", children: children)
+        filterButton.menu = UIMenu(title: "Filter", options: .singleSelection, children: children)
     }
     
     private func updateSortMenu() {
@@ -258,40 +261,8 @@ public final class HomeViewController: UIViewController {
                 self?.updateSortMenu()
             }
         }
-        sortButton.menu = UIMenu(title: "Sort", children: children)
+        sortButton.menu = UIMenu(title: "Sort", options: .singleSelection, children: children)
     }
-    
-//    private func presentFullPhoto(imageData: Data) {
-//        guard let image = UIImage(data: imageData) else { return }
-//        let viewerVC = UIViewController()
-//        viewerVC.view.backgroundColor = .black
-//        
-//        let imageView = UIImageView(image: image)
-//        imageView.contentMode = .scaleAspectFit
-//        imageView.translatesAutoresizingMaskIntoConstraints = false
-//        viewerVC.view.addSubview(imageView)
-//        
-//        let closeButton = UIButton(type: .system)
-//        closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-//        closeButton.tintColor = .white
-//        closeButton.translatesAutoresizingMaskIntoConstraints = false
-//        closeButton.addAction(UIAction { [weak viewerVC] _ in viewerVC?.dismiss(animated: true) }, for: .touchUpInside)
-//        viewerVC.view.addSubview(closeButton)
-//        
-//        NSLayoutConstraint.activate([
-//            imageView.topAnchor.constraint(equalTo: viewerVC.view.topAnchor),
-//            imageView.leadingAnchor.constraint(equalTo: viewerVC.view.leadingAnchor),
-//            imageView.trailingAnchor.constraint(equalTo: viewerVC.view.trailingAnchor),
-//            imageView.bottomAnchor.constraint(equalTo: viewerVC.view.bottomAnchor),
-//            
-//            closeButton.topAnchor.constraint(equalTo: viewerVC.view.safeAreaLayoutGuide.topAnchor, constant: 16),
-//            closeButton.trailingAnchor.constraint(equalTo: viewerVC.view.trailingAnchor, constant: -16),
-//            closeButton.widthAnchor.constraint(equalToConstant: 36),
-//            closeButton.heightAnchor.constraint(equalToConstant: 36)
-//        ])
-//        
-//        present(viewerVC, animated: true)
-//    }
     
     @objc private func didTapPreviousDay() {
         viewModel?.selectPreviousDay()
@@ -301,26 +272,79 @@ public final class HomeViewController: UIViewController {
         viewModel?.selectNextDay()
     }
     
+    //    @objc private func didTapCalendarDatePicker() {
+    //        let alert = UIAlertController(title: "Select Date", message: nil, preferredStyle: .actionSheet)
+    //        let datePicker = UIDatePicker()
+    //        datePicker.datePickerMode = .date
+    //        datePicker.preferredDatePickerStyle = .inline
+    //
+    //        if let date = viewModel?.selectedDate {
+    //            datePicker.date = date
+    //        }
+    //
+    //        let containerVC = UIViewController()
+    //        containerVC.view = datePicker
+    //        containerVC.preferredContentSize = CGSize(width: 320, height: 320)
+    //
+    //        alert.setValue(containerVC, forKey: "contentViewController")
+    //        alert.addAction(UIAlertAction(title: "Done", style: .default) { [weak self] _ in
+    //            self?.viewModel?.selectDate(datePicker.date)
+    //        })
+    //        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    //        present(alert, animated: true)
+    //    }
     @objc private func didTapCalendarDatePicker() {
-        let alert = UIAlertController(title: "Select Date", message: nil, preferredStyle: .actionSheet)
+        let pickerVC = UIViewController()
+        pickerVC.view.backgroundColor = .systemBackground
+        pickerVC.title = "Select Date"
+        
         let datePicker = UIDatePicker()
         datePicker.datePickerMode = .date
         datePicker.preferredDatePickerStyle = .inline
-        
         if let date = viewModel?.selectedDate {
             datePicker.date = date
         }
+        datePicker.translatesAutoresizingMaskIntoConstraints = false
+        pickerVC.view.addSubview(datePicker)
         
-        let containerVC = UIViewController()
-        containerVC.view = datePicker
-        containerVC.preferredContentSize = CGSize(width: 320, height: 320)
+        NSLayoutConstraint.activate([
+            datePicker.topAnchor.constraint(equalTo: pickerVC.view.safeAreaLayoutGuide.topAnchor, constant: Constants.Spacing.small),
+            datePicker.leadingAnchor.constraint(equalTo: pickerVC.view.leadingAnchor, constant: Constants.Spacing.medium),
+            datePicker.trailingAnchor.constraint(equalTo: pickerVC.view.trailingAnchor, constant: -Constants.Spacing.medium)
+        ])
         
-        alert.setValue(containerVC, forKey: "contentViewController")
-        alert.addAction(UIAlertAction(title: "Done", style: .default) { [weak self] _ in
-            self?.viewModel?.selectDate(datePicker.date)
-        })
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        present(alert, animated: true)
+        let nav = UINavigationController(rootViewController: pickerVC)
+        if let sheet = nav.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+        
+        pickerVC.navigationItem.rightBarButtonItem = UIBarButtonItem(
+            title: "Done",
+            style: .done,
+            target: self,
+            action: #selector(didConfirmDatePicker)
+        )
+        pickerVC.navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: "Cancel",
+            style: .plain,
+            target: self,
+            action: #selector(dismissModalPicker)
+        )
+        
+        self.activeDatePicker = datePicker
+        present(nav, animated: true)
+    }
+    
+    @objc private func didConfirmDatePicker() {
+        if let date = activeDatePicker?.date {
+            viewModel?.selectDate(date)
+        }
+        dismiss(animated: true)
+    }
+    
+    @objc private func dismissModalPicker() {
+        dismiss(animated: true)
     }
     
     @objc private func didTapAddReminder() {

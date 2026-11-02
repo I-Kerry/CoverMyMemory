@@ -11,17 +11,27 @@ import UIKit
 struct MainTabBarWrapper: UIViewControllerRepresentable {
     @AppStorage("selected_appearance") private var selectedAppearance = "System"
     
+    public final class Coordinator {
+        let appCoordinator = AppCoordinator()
+        init() {
+            appCoordinator.start()
+        }
+    }
+    
     public init() {}
     
+    public func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+    
     func makeUIViewController(context: Context) -> UIViewController {
-        let coordinator = AppCoordinator()
-        coordinator.start()
-        
-        return coordinator.tabBarController
+        let tabBar = context.coordinator.appCoordinator.tabBarController
+        applyTheme(to: tabBar)
+        return tabBar
     }
     
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        
+        applyTheme(to: uiViewController)
     }
     
     func applyTheme(to viewController: UIViewController) {

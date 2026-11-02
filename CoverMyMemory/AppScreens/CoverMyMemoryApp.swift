@@ -16,7 +16,7 @@ struct CoverMyMemoryApp: App {
             MainTabBarWrapper()
                 .preferredColorScheme(colorScheme)
         }
-        .modelContainer(for: [Reminder.self, Person.self])
+        .modelContainer(AppDatabase.shared.container)
     }
     
     private var colorScheme: ColorScheme? {

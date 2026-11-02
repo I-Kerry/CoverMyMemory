@@ -58,18 +58,23 @@ public final class HomeViewModel: ObservableObject {
     private var peopleCache: [UUID: Person] = [:]
     
     public init(
-        reminderRepository: ReminderRepository,
-        personRepository: PersonRepository,
-        photoStorage: PhotoStorage,
+        reminderRepository: ReminderRepository? = nil,
+        personRepository: PersonRepository? = nil,
+        photoStorage: PhotoStorage? = nil,
         initialDate: Date = Date()
     ) {
-        self.reminderRepository = reminderRepository
-        self.personRepository = personRepository
-        self.photoStorage = photoStorage
+        // Safe default fallbacks to ensure ViewModel is always fully functional
+        let storage = photoStorage ?? FilePhotoStorage()
+        self.photoStorage = storage
+        
+        let sharedContext = AppDatabase.shared.context
+        self.reminderRepository = reminderRepository ?? SwiftDataReminderRepository(modelContext: sharedContext)
+        self.personRepository = personRepository ?? SwiftDataPersonRepository(modelContext: sharedContext)
+        
         self.selectedDate = initialDate
         updateFormattedDateString()
     }
-        
+    
     public func loadData() async {
         do {
             let people = try await personRepository.fetchAll()
@@ -104,7 +109,7 @@ public final class HomeViewModel: ObservableObject {
         updateFormattedDateString()
         Task { await loadData() }
     }
- 
+    
     public func toggleCompletion(for reminderId: UUID) async {
         guard let reminder = rawReminders.first(where: { $0.id == reminderId }) else { return }
         
@@ -151,7 +156,7 @@ public final class HomeViewModel: ObservableObject {
         self.totalCount = rawReminders.count
         self.completedCount = rawReminders.filter { $0.isCompleted }.count
         self.statusText = totalCount > 0 ? "\(completedCount) of \(totalCount) completed" : "0 completed"
-
+        
         let filtered: [Reminder]
         switch currentFilter {
         case .all:
@@ -188,13 +193,13 @@ public final class HomeViewModel: ObservableObject {
                 return compareByTime(lhs, rhs)
             }
         }
-                
+        
         self.displayedItems = sorted.map { reminder in
             let person = reminder.personID.flatMap { peopleCache[$0] }
             let timeStr = reminder.timeOptional.map { timeFormatter.string(from: $0) }
             let deadlineStr = reminder.deadlineEnabled && reminder.timeOptional != nil
-                ? "Deadline \(timeStr ?? "")"
-                : nil
+            ? "Deadline \(timeStr ?? "")"
+            : nil
             
             return ReminderItem(
                 id: reminder.id,

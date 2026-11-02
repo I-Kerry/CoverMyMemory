@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 public protocol ReminderRepository: AnyObject {
     func fetchReminders(for date: Date) async throws -> [Reminder]
     func fetchAll() async throws -> [Reminder]
