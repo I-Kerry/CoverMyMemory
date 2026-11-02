@@ -13,6 +13,7 @@ public final class HomeViewController: UIViewController {
     public weak var coordinator: HomeCoordinator?
     public var viewModel: HomeViewModel?
     private var cancellables = Set<AnyCancellable>()
+    
     private var dataSource: UITableViewDiffableDataSource<Int, ReminderItem>?
     
     private let headerContainerView: UIView = {
@@ -53,6 +54,10 @@ public final class HomeViewController: UIViewController {
         return table
     }()
     
+    private let filterButton = FloatingMenuButton(iconSystemName: AssetCatalog.Icons.filter)
+    
+    private let sortButton = FloatingMenuButton(iconSystemName: AssetCatalog.Icons.sort)
+    
     private let floatingStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .horizontal
@@ -63,43 +68,11 @@ public final class HomeViewController: UIViewController {
         return stack
     }()
     
-    private lazy var filterButton: UIButton = {
-        let button = UIButton(type: .system)
-        let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
-        button.setImage(UIImage(systemName: AssetCatalog.Icons.filter, withConfiguration: config), for: .normal)
-        button.tintColor = .white
-        button.backgroundColor = .appAccent
-        button.layer.cornerRadius = Constants.Layout.floatingButtonSize / 2
-        button.layer.shadowColor = UIColor.black.cgColor
-        button.layer.shadowOpacity = 0.25
-        button.layer.shadowOffset = CGSize(width: 0, height: 4)
-        button.layer.shadowRadius = 8
-        button.showsMenuAsPrimaryAction = true
-        button.translatesAutoresizingMaskIntoConstraints = false
-        return button
-    }()
-    
-    private lazy var sortButton: UIButton = {
-        let button = UIButton(type: .system)
-        let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
-        button.setImage(UIImage(systemName: AssetCatalog.Icons.sort, withConfiguration: config), for: .normal)
-        button.tintColor = .white
-        button.backgroundColor = .appAccent
-        button.layer.cornerRadius = Constants.Layout.floatingButtonSize / 2
-        button.layer.shadowColor = UIColor.black.cgColor
-        button.layer.shadowOpacity = 0.25
-        button.layer.shadowOffset = CGSize(width: 0, height: 4)
-        button.layer.shadowRadius = 8
-        button.showsMenuAsPrimaryAction = true
-        button.translatesAutoresizingMaskIntoConstraints = false
-        return button
-    }()
-    
     private var dateNavButton: UIBarButtonItem?
     
-    public init() {
+    public init(viewModel: HomeViewModel? = nil) {
+        self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
-        title = nil
         tabBarItem = UITabBarItem(
             title: "Home",
             image: UIImage(systemName: AssetCatalog.Icons.home),
@@ -122,15 +95,15 @@ public final class HomeViewController: UIViewController {
         setupFloatingMenus()
         bindViewModel()
         
-        Task {
-            await viewModel?.loadData()
+        Task { [weak self] in
+            self?.viewModel?.loadData
         }
     }
     
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        Task {
-            await viewModel?.loadData()
+        Task { [weak self] in
+            await self?.viewModel?.loadData()
         }
     }
     
@@ -180,7 +153,6 @@ public final class HomeViewController: UIViewController {
         floatingStackView.addArrangedSubview(sortButton)
         
         NSLayoutConstraint.activate([
-            // Header
             headerContainerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: Constants.Spacing.xSmall),
             headerContainerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.Layout.horizontalInset),
             headerContainerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.Layout.horizontalInset),
@@ -193,21 +165,13 @@ public final class HomeViewController: UIViewController {
             statusLabel.trailingAnchor.constraint(equalTo: headerContainerView.trailingAnchor),
             statusLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: Constants.Spacing.small),
             
-            // TableView
             tableView.topAnchor.constraint(equalTo: headerContainerView.bottomAnchor, constant: Constants.Spacing.xSmall),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            // Floating Filter & Sort buttons centered above tab bar
             floatingStackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            floatingStackView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Constants.Spacing.medium),
-            
-            filterButton.widthAnchor.constraint(equalToConstant: Constants.Layout.floatingButtonSize),
-            filterButton.heightAnchor.constraint(equalToConstant: Constants.Layout.floatingButtonSize),
-            
-            sortButton.widthAnchor.constraint(equalToConstant: Constants.Layout.floatingButtonSize),
-            sortButton.heightAnchor.constraint(equalToConstant: Constants.Layout.floatingButtonSize)
+            floatingStackView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Constants.Spacing.medium)
         ])
     }
     
@@ -226,7 +190,8 @@ public final class HomeViewController: UIViewController {
             }
             
             cell.onThumbnailTap = { data in
-                self?.presentFullPhoto(imageData: data)
+                let viewerVC = PhotoViewerViewController(imageData: data)
+                self?.present(viewerVC, animated: true)
             }
             
             return cell
@@ -236,12 +201,10 @@ public final class HomeViewController: UIViewController {
     private func bindViewModel() {
         guard let viewModel = viewModel else { return }
         
-        viewModel.$selectedDate
+        viewModel.$formattedDateString
             .receive(on: RunLoop.main)
-            .sink { [weak self] date in
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEE, MMM d"
-                self?.dateNavButton?.title = formatter.string(from: date)
+            .sink { [weak self] dateText in
+                self?.dateNavButton?.title = dateText
             }
             .store(in: &cancellables)
         
@@ -254,15 +217,11 @@ public final class HomeViewController: UIViewController {
                 self?.dataSource?.apply(snapshot, animatingDifferences: true)
             }
             .store(in: &cancellables)
-        
-        Publishers.CombineLatest(viewModel.$completedCount, viewModel.$totalCount)
+
+        viewModel.$statusText
             .receive(on: RunLoop.main)
-            .sink { [weak self] (completed, total) in
-                if total > 0 {
-                    self?.statusLabel.text = "\(completed) of \(total) completed"
-                } else {
-                    self?.statusLabel.text = "0 completed"
-                }
+            .sink { [weak self] text in
+                self?.statusLabel.text = text
             }
             .store(in: &cancellables)
     }
@@ -302,37 +261,37 @@ public final class HomeViewController: UIViewController {
         sortButton.menu = UIMenu(title: "Sort", children: children)
     }
     
-    private func presentFullPhoto(imageData: Data) {
-        guard let image = UIImage(data: imageData) else { return }
-        let viewerVC = UIViewController()
-        viewerVC.view.backgroundColor = .black
-        
-        let imageView = UIImageView(image: image)
-        imageView.contentMode = .scaleAspectFit
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        viewerVC.view.addSubview(imageView)
-        
-        let closeButton = UIButton(type: .system)
-        closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-        closeButton.tintColor = .white
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.addAction(UIAction { [weak viewerVC] _ in viewerVC?.dismiss(animated: true) }, for: .touchUpInside)
-        viewerVC.view.addSubview(closeButton)
-        
-        NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: viewerVC.view.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: viewerVC.view.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: viewerVC.view.trailingAnchor),
-            imageView.bottomAnchor.constraint(equalTo: viewerVC.view.bottomAnchor),
-            
-            closeButton.topAnchor.constraint(equalTo: viewerVC.view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            closeButton.trailingAnchor.constraint(equalTo: viewerVC.view.trailingAnchor, constant: -16),
-            closeButton.widthAnchor.constraint(equalToConstant: 36),
-            closeButton.heightAnchor.constraint(equalToConstant: 36)
-        ])
-        
-        present(viewerVC, animated: true)
-    }
+//    private func presentFullPhoto(imageData: Data) {
+//        guard let image = UIImage(data: imageData) else { return }
+//        let viewerVC = UIViewController()
+//        viewerVC.view.backgroundColor = .black
+//        
+//        let imageView = UIImageView(image: image)
+//        imageView.contentMode = .scaleAspectFit
+//        imageView.translatesAutoresizingMaskIntoConstraints = false
+//        viewerVC.view.addSubview(imageView)
+//        
+//        let closeButton = UIButton(type: .system)
+//        closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+//        closeButton.tintColor = .white
+//        closeButton.translatesAutoresizingMaskIntoConstraints = false
+//        closeButton.addAction(UIAction { [weak viewerVC] _ in viewerVC?.dismiss(animated: true) }, for: .touchUpInside)
+//        viewerVC.view.addSubview(closeButton)
+//        
+//        NSLayoutConstraint.activate([
+//            imageView.topAnchor.constraint(equalTo: viewerVC.view.topAnchor),
+//            imageView.leadingAnchor.constraint(equalTo: viewerVC.view.leadingAnchor),
+//            imageView.trailingAnchor.constraint(equalTo: viewerVC.view.trailingAnchor),
+//            imageView.bottomAnchor.constraint(equalTo: viewerVC.view.bottomAnchor),
+//            
+//            closeButton.topAnchor.constraint(equalTo: viewerVC.view.safeAreaLayoutGuide.topAnchor, constant: 16),
+//            closeButton.trailingAnchor.constraint(equalTo: viewerVC.view.trailingAnchor, constant: -16),
+//            closeButton.widthAnchor.constraint(equalToConstant: 36),
+//            closeButton.heightAnchor.constraint(equalToConstant: 36)
+//        ])
+//        
+//        present(viewerVC, animated: true)
+//    }
     
     @objc private func didTapPreviousDay() {
         viewModel?.selectPreviousDay()
@@ -347,15 +306,16 @@ public final class HomeViewController: UIViewController {
         let datePicker = UIDatePicker()
         datePicker.datePickerMode = .date
         datePicker.preferredDatePickerStyle = .inline
+        
         if let date = viewModel?.selectedDate {
             datePicker.date = date
         }
         
-        let vc = UIViewController()
-        vc.view = datePicker
-        vc.preferredContentSize = CGSize(width: 320, height: 320)
+        let containerVC = UIViewController()
+        containerVC.view = datePicker
+        containerVC.preferredContentSize = CGSize(width: 320, height: 320)
         
-        alert.setValue(vc, forKey: "contentViewController")
+        alert.setValue(containerVC, forKey: "contentViewController")
         alert.addAction(UIAlertAction(title: "Done", style: .default) { [weak self] _ in
             self?.viewModel?.selectDate(datePicker.date)
         })
@@ -374,8 +334,8 @@ extension HomeViewController: UITableViewDelegate {
         tableView.deselectRow(at: indexPath, animated: true)
         guard let item = dataSource?.itemIdentifier(for: indexPath) else { return }
         
-        Task {
-            await viewModel?.toggleCompletion(for: item.id)
+        Task { [weak self] in
+            await self?.viewModel?.toggleCompletion(for: item.id)
         }
     }
     
@@ -410,7 +370,6 @@ extension HomeViewController: UITableViewDelegate {
         renameAction.backgroundColor = .systemBlue
         renameAction.image = UIImage(systemName: "pencil")
         
-        // 3. Edit Action
         let editAction = UIContextualAction(style: .normal, title: "Edit") { [weak self] (_, _, completion) in
             self?.coordinator?.showEditReminder(reminderId: item.id)
             completion(true)

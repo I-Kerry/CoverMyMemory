@@ -27,13 +27,29 @@ public final class HomeViewModel: ObservableObject {
     private let personRepository: PersonRepository
     private let photoStorage: PhotoStorage
     
+    private let navDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE, MMM d"
+        return formatter
+    }()
+    
+    private let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+    
     @Published public private(set) var selectedDate: Date
     @Published public private(set) var displayedItems: [ReminderItem] = []
+    @Published public private(set) var formattedDateString: String = ""
+    @Published public private(set) var statusText: String = "0 completed"
     @Published public private(set) var totalCount: Int = 0
     @Published public private(set) var completedCount: Int = 0
+    
     @Published public var currentFilter: ReminderFilter = .all {
         didSet { applyFilterAndSort() }
     }
+    
     @Published public var currentSort: ReminderSort = .byTime {
         didSet { applyFilterAndSort() }
     }
@@ -51,6 +67,7 @@ public final class HomeViewModel: ObservableObject {
         self.personRepository = personRepository
         self.photoStorage = photoStorage
         self.selectedDate = initialDate
+        updateFormattedDateString()
     }
         
     public func loadData() async {
@@ -59,16 +76,17 @@ public final class HomeViewModel: ObservableObject {
             self.peopleCache = Dictionary(uniqueKeysWithValues: people.map { ($0.id, $0) })
             
             self.rawReminders = try await reminderRepository.fetchReminders(for: selectedDate)
-            
+            updateFormattedDateString()
             applyFilterAndSort()
         } catch {
-            print("[HomeViewModel] Error loading data: \(error)")
+            fatalError("Loading data error: \(error)")
         }
     }
     
     public func selectPreviousDay() {
         if let prev = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) {
             selectedDate = prev
+            updateFormattedDateString()
             Task { await loadData() }
         }
     }
@@ -76,17 +94,19 @@ public final class HomeViewModel: ObservableObject {
     public func selectNextDay() {
         if let next = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) {
             selectedDate = next
+            updateFormattedDateString()
             Task { await loadData() }
         }
     }
     
     public func selectDate(_ date: Date) {
         selectedDate = date
+        updateFormattedDateString()
         Task { await loadData() }
     }
  
     public func toggleCompletion(for reminderId: UUID) async {
-        guard let reminder = rawReminders.first(where: { /*$0.id === reminderId || */$0.id == reminderId }) else { return }
+        guard let reminder = rawReminders.first(where: { $0.id == reminderId }) else { return }
         
         if reminder.isCompleted {
             if let fileName = reminder.photoFileName {
@@ -123,10 +143,15 @@ public final class HomeViewModel: ObservableObject {
         applyFilterAndSort()
     }
     
+    private func updateFormattedDateString() {
+        formattedDateString = navDateFormatter.string(from: selectedDate)
+    }
+    
     private func applyFilterAndSort() {
         self.totalCount = rawReminders.count
         self.completedCount = rawReminders.filter { $0.isCompleted }.count
-        
+        self.statusText = totalCount > 0 ? "\(completedCount) of \(totalCount) completed" : "0 completed"
+
         let filtered: [Reminder]
         switch currentFilter {
         case .all:
@@ -140,7 +165,6 @@ public final class HomeViewModel: ObservableObject {
         let sorted = filtered.sorted { (lhs, rhs) -> Bool in
             switch currentSort {
             case .byTime:
-                // Items without time go to the end
                 if let lhsTime = lhs.timeOptional, let rhsTime = rhs.timeOptional {
                     return lhsTime < rhsTime
                 } else if lhs.timeOptional != nil {
@@ -164,10 +188,7 @@ public final class HomeViewModel: ObservableObject {
                 return compareByTime(lhs, rhs)
             }
         }
-        
-        let timeFormatter = DateFormatter()
-        timeFormatter.dateFormat = "HH:mm"
-        
+                
         self.displayedItems = sorted.map { reminder in
             let person = reminder.personID.flatMap { peopleCache[$0] }
             let timeStr = reminder.timeOptional.map { timeFormatter.string(from: $0) }
