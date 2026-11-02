@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct ReminderItem: Hashable, Sendable {
+nonisolated public struct ReminderItem: Hashable, Sendable {
     public let id: UUID
     public let title: String
     public let personName: String?

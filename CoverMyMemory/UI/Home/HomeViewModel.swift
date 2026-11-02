@@ -84,10 +84,7 @@ public final class HomeViewModel: ObservableObject {
         selectedDate = date
         Task { await loadData() }
     }
-    
-    /// Toggles a reminder's completion state
-    /// If completing: marks completed
-    /// If uncompleting: marks incomplete and removes captured photo/thumbnail
+ 
     public func toggleCompletion(for reminderId: UUID) async {
         guard let reminder = rawReminders.first(where: { /*$0.id === reminderId || */$0.id == reminderId }) else { return }
         
@@ -168,7 +165,6 @@ public final class HomeViewModel: ObservableObject {
             }
         }
         
-        // 3. Map to Presentation Items
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "HH:mm"
         
