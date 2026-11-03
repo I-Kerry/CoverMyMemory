@@ -35,7 +35,6 @@ final class HomeViewModelTests: XCTestCase {
             initialDate: targetDate
         )
         
-        // Seed 2 reminders: one incomplete with time, one completed
         let r1 = Reminder(title: "Task 1", dateRequired: targetDate, timeOptional: targetDate, isCompleted: false)
         let r2 = Reminder(title: "Task 2", dateRequired: targetDate, isCompleted: true)
         try await reminderRepo.save(r1)
@@ -61,17 +60,14 @@ final class HomeViewModelTests: XCTestCase {
     func testFilterAllCompletedAndNotCompleted() async {
         await viewModel.loadData()
         
-        // Filter: Completed
         viewModel.currentFilter = .completed
         XCTAssertEqual(viewModel.displayedItems.count, 1)
         XCTAssertTrue(viewModel.displayedItems.first!.isCompleted)
         
-        // Filter: Not Completed
         viewModel.currentFilter = .notCompleted
         XCTAssertEqual(viewModel.displayedItems.count, 1)
         XCTAssertFalse(viewModel.displayedItems.first!.isCompleted)
         
-        // Filter: All
         viewModel.currentFilter = .all
         XCTAssertEqual(viewModel.displayedItems.count, 2)
     }
@@ -87,11 +83,9 @@ final class HomeViewModelTests: XCTestCase {
         await viewModel.loadData()
         let firstItem = viewModel.displayedItems.first(where: { !$0.isCompleted })!
         
-        // Toggle from incomplete to completed
         await viewModel.toggleCompletion(for: firstItem.id)
         XCTAssertEqual(viewModel.completedCount, 2)
         
-        // Toggle back to incomplete
         await viewModel.toggleCompletion(for: firstItem.id)
         XCTAssertEqual(viewModel.completedCount, 1)
     }

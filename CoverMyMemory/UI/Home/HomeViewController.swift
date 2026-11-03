@@ -272,27 +272,6 @@ public final class HomeViewController: UIViewController {
         viewModel?.selectNextDay()
     }
     
-    //    @objc private func didTapCalendarDatePicker() {
-    //        let alert = UIAlertController(title: "Select Date", message: nil, preferredStyle: .actionSheet)
-    //        let datePicker = UIDatePicker()
-    //        datePicker.datePickerMode = .date
-    //        datePicker.preferredDatePickerStyle = .inline
-    //
-    //        if let date = viewModel?.selectedDate {
-    //            datePicker.date = date
-    //        }
-    //
-    //        let containerVC = UIViewController()
-    //        containerVC.view = datePicker
-    //        containerVC.preferredContentSize = CGSize(width: 320, height: 320)
-    //
-    //        alert.setValue(containerVC, forKey: "contentViewController")
-    //        alert.addAction(UIAlertAction(title: "Done", style: .default) { [weak self] _ in
-    //            self?.viewModel?.selectDate(datePicker.date)
-    //        })
-    //        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-    //        present(alert, animated: true)
-    //    }
     @objc private func didTapCalendarDatePicker() {
         let pickerVC = UIViewController()
         pickerVC.view.backgroundColor = .systemBackground

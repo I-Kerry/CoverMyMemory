@@ -63,7 +63,6 @@ public final class HomeViewModel: ObservableObject {
         photoStorage: PhotoStorage? = nil,
         initialDate: Date = Date()
     ) {
-        // Safe default fallbacks to ensure ViewModel is always fully functional
         let storage = photoStorage ?? FilePhotoStorage()
         self.photoStorage = storage
         

@@ -108,7 +108,6 @@ public final class ReminderCell: UITableViewCell {
         containerCardView.addSubview(checkmarkButton)
         containerCardView.addSubview(thumbnailImageView)
         
-        // Tap gesture on thumbnail
         let thumbTap = UITapGestureRecognizer(target: self, action: #selector(didTapThumbnail))
         thumbnailImageView.addGestureRecognizer(thumbTap)
         

@@ -13,10 +13,6 @@ public final class FilePhotoStorage: PhotoStorage {
     private let photosDirectoryURL: URL
     
     public init() {
-//        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-//        self.photosDirectoryURL = appSupport.appendingPathComponent(Constants.Storage.photosDirectoryName, isDirectory: true)
-//        createDirectoryIfNeeded()
-        
         do {
             let appSupport = try fileManager.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             self.photosDirectoryURL = appSupport.appendingPathComponent(Constants.Storage.photosDirectoryName, isDirectory: true)
@@ -39,14 +35,12 @@ public final class FilePhotoStorage: PhotoStorage {
         let fileName = "\(uuid).jpg"
         let fileURL = photosDirectoryURL.appendingPathComponent(fileName)
         
-        // 1. Save full resolution JPEG
         guard let jpegData = image.jpegData(compressionQuality: 0.85) else {
             throw NSError(domain: "FilePhotoStorage", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to encode JPEG"])
         }
         
         try jpegData.write(to: fileURL, options: .atomic)
         
-        // 2. Generate thumbnail Data (64pt @2x = 128x128px)
         let thumbnail = generateThumbnail(from: image, targetSize: CGSize(width: Constants.Layout.thumbnailSize * 2, height: Constants.Layout.thumbnailSize * 2))
         guard let thumbData = thumbnail.jpegData(compressionQuality: 0.75) else {
             throw NSError(domain: "FilePhotoStorage", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to generate thumbnail"])
