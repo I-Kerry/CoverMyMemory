@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 public protocol PersonRepository: AnyObject {
     func fetchAll() async throws -> [Person]
     func fetch(by id: UUID) async throws -> Person?

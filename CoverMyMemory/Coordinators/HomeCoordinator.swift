@@ -18,7 +18,7 @@ public final class HomeCoordinator: Coordinator {
     public func start() {
         let homeVC = HomeViewController()
         homeVC.coordinator = self
-        navigationController.setViewControllers([homeVC], animated: false)
+        navigationController.setViewControllers([homeVC], animated: true)
     }
     
     public func showCreateReminder() {

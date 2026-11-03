@@ -20,7 +20,6 @@ final class DataLayerTests: XCTestCase {
     
     override func setUp() async throws {
         try await super.setUp()
-        // In-memory ModelContainer for isolated, fast unit tests
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         container = try ModelContainer(for: Reminder.self, Person.self, configurations: config)
         
@@ -88,24 +87,20 @@ final class DataLayerTests: XCTestCase {
     
     // MARK: - PhotoStorage Tests
     func testPhotoStorageSaveLoadDelete() async throws {
-        // Create 200x200 test image
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 200, height: 200))
         let testImage = renderer.image { ctx in
             UIColor.systemBlue.setFill()
             ctx.fill(CGRect(x: 0, y: 0, width: 200, height: 200))
         }
         
-        // 1. Save photo
         let result = try await photoStorage.savePhoto(testImage)
         XCTAssertFalse(result.fileName.isEmpty)
         XCTAssertFalse(result.thumbnailData.isEmpty)
         XCTAssertTrue(result.fileName.hasSuffix(".jpg"))
         
-        // 2. Load photo
         let loadedImage = await photoStorage.loadPhoto(fileName: result.fileName)
         XCTAssertNotNil(loadedImage)
         
-        // 3. Delete photo
         try await photoStorage.deletePhoto(fileName: result.fileName)
         let reloaded = await photoStorage.loadPhoto(fileName: result.fileName)
         XCTAssertNil(reloaded)
