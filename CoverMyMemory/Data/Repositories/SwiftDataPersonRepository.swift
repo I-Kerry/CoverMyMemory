@@ -16,6 +16,10 @@ public final class SwiftDataPersonRepository: PersonRepository {
         self.modelContext = modelContext
     }
     
+    public convenience init() {
+        self.init(modelContext: AppDatabase.shared.context)
+    }
+    
     public func fetchAll() async throws -> [Person] {
         let descriptor = FetchDescriptor<Person>(
             sortBy: [SortDescriptor(\.name, order: .forward)]

@@ -46,9 +46,8 @@ public final class ReminderEditorViewModel: ObservableObject {
         self.reminderId = reminderId
         self.isEditMode = (reminderId != nil)
         
-        let sharedContext = AppDatabase.shared.context
-        self.reminderRepository = reminderRepository ?? SwiftDataReminderRepository(modelContext: sharedContext)
-        self.personRepository = personRepository ?? SwiftDataPersonRepository(modelContext: sharedContext)
+        self.reminderRepository = reminderRepository ?? SwiftDataReminderRepository()
+        self.personRepository = personRepository ?? SwiftDataPersonRepository()
         
         self.date = initialDate
         self.time = initialDate

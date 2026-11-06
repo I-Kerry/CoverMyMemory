@@ -22,12 +22,47 @@ public final class HomeCoordinator: Coordinator {
     }
     
     public func showCreateReminder() {
-        // Will present Editor in Stage 4
+        let homeVC = navigationController.viewControllers.compactMap { $0 as? HomeViewController }.first
+        let selectedDate = homeVC?.viewModel?.selectedDate ?? Date()
+        
+        let editorVM = ReminderEditorViewModel(
+            reminderId: nil,
+            initialDate: selectedDate
+        )
+        let editorVC = ReminderEditorViewController(viewModel: editorVM)
+        editorVC.onDismissOrSaved = { [weak homeVC] in
+            Task { @MainActor [weak homeVC] in
+                await homeVC?.viewModel?.loadData()
+            }
+        }
+        
+        editorVC.modalPresentationStyle = .pageSheet
+        if let sheet = editorVC.sheetPresentationController {
+            sheet.detents = [.large()]
+            sheet.prefersGrabberVisible = true
+        }
+        navigationController.present(editorVC, animated: true)
     }
     
     public func showEditReminder(reminderId: UUID) {
-        // Will present Edit Editor in Stage 4
-    }
+        let homeVC = navigationController.viewControllers.compactMap { $0 as? HomeViewController }.first
+        
+        let editorVM = ReminderEditorViewModel(
+            reminderId: reminderId
+        )
+        let editorVC = ReminderEditorViewController(viewModel: editorVM)
+        editorVC.onDismissOrSaved = { [weak homeVC] in
+            Task { @MainActor [weak homeVC] in
+                await homeVC?.viewModel?.loadData()
+            }
+        }
+        
+        editorVC.modalPresentationStyle = .pageSheet
+        if let sheet = editorVC.sheetPresentationController {
+            sheet.detents = [.large()]
+            sheet.prefersGrabberVisible = true
+        }
+        navigationController.present(editorVC, animated: true)    }
     
     public func showCameraCompletion(reminderId: UUID) {
         // Will present Camera Sheet in Stage 6

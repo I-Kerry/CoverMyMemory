@@ -16,6 +16,10 @@ public final class SwiftDataReminderRepository: ReminderRepository {
         self.modelContext = modelContext
     }
     
+    public convenience init() {
+        self.init(modelContext: AppDatabase.shared.context)
+    }
+    
     public func fetchReminders(for date: Date) async throws -> [Reminder] {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
