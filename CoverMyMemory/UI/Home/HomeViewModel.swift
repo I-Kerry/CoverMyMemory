@@ -57,6 +57,13 @@ public final class HomeViewModel: ObservableObject {
     private var rawReminders: [Reminder] = []
     private var peopleCache: [UUID: Person] = [:]
     
+    public var canCompleteOnSelectedDay: Bool {
+        let calendar = Calendar.current
+        let selectedStart = calendar.startOfDay(for: selectedDate)
+        let todayStart = calendar.startOfDay(for: Date())
+        return selectedStart <= todayStart
+    }
+    
     public init(
         reminderRepository: ReminderRepository? = nil,
         personRepository: PersonRepository? = nil,
@@ -112,18 +119,15 @@ public final class HomeViewModel: ObservableObject {
     public func toggleCompletion(for reminderId: UUID) async {
         guard let reminder = rawReminders.first(where: { $0.id == reminderId }) else { return }
         
-        if reminder.isCompleted {
-            if let fileName = reminder.photoFileName {
+        guard canCompleteOnSelectedDay else { return }
+        
+        let isNowCompleted = reminder.toggleCompletion(on: selectedDate)
+        if !isNowCompleted {
+            if reminder.completedDates.isEmpty, let fileName = reminder.photoFileName {
                 try? await photoStorage.deletePhoto(fileName: fileName)
+                reminder.photoFileName = nil
+                reminder.photoThumbData = nil
             }
-            reminder.isCompleted = false
-            reminder.completedAt = nil
-            reminder.photoFileName = nil
-            reminder.photoThumbData = nil
-        } else {
-            // Complete without photo (photo capture sheet handled in Stage 6)
-            reminder.isCompleted = true
-            reminder.completedAt = Date()
         }
         
         try? await reminderRepository.update(reminder)
@@ -152,8 +156,10 @@ public final class HomeViewModel: ObservableObject {
     }
     
     private func applyFilterAndSort() {
+        let complete = canCompleteOnSelectedDay
+        
         self.totalCount = rawReminders.count
-        self.completedCount = rawReminders.filter { $0.isCompleted }.count
+        self.completedCount = rawReminders.filter { $0.isCompleted(on: selectedDate) }.count
         self.statusText = totalCount > 0 ? "\(completedCount) of \(totalCount) completed" : "0 completed"
         
         let filtered: [Reminder]
@@ -161,9 +167,9 @@ public final class HomeViewModel: ObservableObject {
         case .all:
             filtered = rawReminders
         case .completed:
-            filtered = rawReminders.filter { $0.isCompleted }
+            filtered = rawReminders.filter { $0.isCompleted(on: selectedDate) }
         case .notCompleted:
-            filtered = rawReminders.filter { !$0.isCompleted }
+            filtered = rawReminders.filter { !$0.isCompleted(on: selectedDate) }
         }
         
         let sorted = filtered.sorted { (lhs, rhs) -> Bool in
@@ -180,13 +186,18 @@ public final class HomeViewModel: ObservableObject {
                 }
                 
             case .completedFirst:
-                if lhs.isCompleted != rhs.isCompleted {
+                let lhsCompleted = lhs.isCompleted(on: selectedDate)
+                let rhsCompleted = rhs.isCompleted(on: selectedDate)
+                if lhsCompleted != rhsCompleted {
                     return lhs.isCompleted && !rhs.isCompleted
                 }
                 return compareByTime(lhs, rhs)
                 
             case .notCompletedFirst:
-                if lhs.isCompleted != rhs.isCompleted {
+                let lhsCompleted = lhs.isCompleted(on: selectedDate)
+                let rhsCompleted = rhs.isCompleted(on: selectedDate)
+                
+                if lhsCompleted != rhsCompleted {
                     return !lhs.isCompleted && rhs.isCompleted
                 }
                 return compareByTime(lhs, rhs)
@@ -199,6 +210,7 @@ public final class HomeViewModel: ObservableObject {
             let deadlineStr = reminder.deadlineEnabled && reminder.timeOptional != nil
             ? "Deadline \(timeStr ?? "")"
             : nil
+            let itemCompleted = reminder.isCompleted(on: selectedDate)
             
             return ReminderItem(
                 id: reminder.id,
@@ -206,7 +218,8 @@ public final class HomeViewModel: ObservableObject {
                 personName: person?.name,
                 personThumbData: person?.photoThumbData,
                 timeFormatted: timeStr,
-                isCompleted: reminder.isCompleted,
+                isCompleted: itemCompleted,
+                canBeCompleted: complete,
                 deadlineText: deadlineStr,
                 photoThumbData: reminder.photoThumbData,
                 hasPhoto: reminder.photoThumbData != nil,

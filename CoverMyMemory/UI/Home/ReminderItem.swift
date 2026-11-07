@@ -14,6 +14,7 @@ nonisolated public struct ReminderItem: Hashable, Sendable {
     public let personThumbData: Data?
     public let timeFormatted: String?
     public let isCompleted: Bool
+    public let canBeCompleted: Bool
     public let deadlineText: String?
     public let photoThumbData: Data?
     public let hasPhoto: Bool
@@ -27,6 +28,7 @@ nonisolated public struct ReminderItem: Hashable, Sendable {
         personThumbData: Data?,
         timeFormatted: String?,
         isCompleted: Bool,
+        canBeCompleted: Bool = true,
         deadlineText: String?,
         photoThumbData: Data?,
         hasPhoto: Bool,
@@ -39,6 +41,7 @@ nonisolated public struct ReminderItem: Hashable, Sendable {
         self.personThumbData = personThumbData
         self.timeFormatted = timeFormatted
         self.isCompleted = isCompleted
+        self.canBeCompleted = canBeCompleted
         self.deadlineText = deadlineText
         self.photoThumbData = photoThumbData
         self.hasPhoto = hasPhoto

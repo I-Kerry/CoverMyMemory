@@ -1,0 +1,162 @@
+//
+//  PersonPickerView.swift
+//  CoverMyMemory
+//
+//  Created by Kirill Maidanovich on 06.11.2026.
+//
+
+import SwiftUI
+
+public struct PersonPickerView: View {
+    @ObservedObject public var viewModel: ReminderEditorViewModel
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var showingAddPersonAlert = false
+    @State private var newPersonName = ""
+    @State private var errorMessage: String?
+    @State private var showingErrorAlert = false
+    
+    public init(viewModel: ReminderEditorViewModel) {
+        self.viewModel = viewModel
+    }
+    
+    public var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button(action: {
+                        viewModel.selectPerson(nil)
+                        dismiss()
+                    }) {
+                        HStack(spacing: Constants.Spacing.medium) {
+                            Image(systemName: "slash.circle")
+                                .font(.system(size: 20))
+                                .foregroundColor(.appTextSecondary)
+                                .frame(width: 32, height: 32)
+                            
+                            Text("None (No Person)")
+                                .foregroundColor(.appTextPrimary)
+                                .font(.appSubheadline)
+                            
+                            Spacer()
+                            
+                            if viewModel.selectedPerson == nil {
+                                Image(systemName: AssetCatalog.Icons.checkmark)
+                                    .foregroundColor(.appAccent)
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("No Assignment")
+                }
+                
+                Section {
+                    if viewModel.availablePeople.isEmpty {
+                        Text("No people added yet. Tap '+' above to add someone.")
+                            .font(.appCaption)
+                            .foregroundColor(.appTextSecondary)
+                            .padding(.vertical, Constants.Spacing.xSmall)
+                    } else {
+                        ForEach(viewModel.availablePeople) { person in
+                            Button(action: {
+                                viewModel.selectPerson(person)
+                                dismiss()
+                            }) {
+                                HStack(spacing: Constants.Spacing.medium) {
+                                    personAvatarView(for: person)
+                                    
+                                    Text(person.name)
+                                        .foregroundColor(.appTextPrimary)
+                                        .font(.appSubheadline)
+                                    
+                                    Spacer()
+                                    
+                                    if viewModel.selectedPerson?.id == person.id {
+                                        Image(systemName: AssetCatalog.Icons.checkmark)
+                                            .foregroundColor(.appAccent)
+                                            .fontWeight(.semibold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text("People")
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Assign Person")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: {
+                        newPersonName = ""
+                        showingAddPersonAlert = true
+                    }) {
+                        Image(systemName: AssetCatalog.Icons.add)
+                    }
+                }
+            }
+            .alert("New Person", isPresented: $showingAddPersonAlert) {
+                TextField("Full Name", text: $newPersonName)
+                Button("Cancel", role: .cancel) { }
+                Button("Add") {
+                    createNewPerson()
+                }
+            } message: {
+                Text("Enter the name of the person you want to add.")
+            }
+            .alert("Error", isPresented: $showingErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage ?? "An error occurred while creating person.")
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func personAvatarView(for person: Person) -> some View {
+        if let thumbData = person.photoThumbData, let uiImage = UIImage(data: thumbData) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 32, height: 32)
+                .clipShape(Circle())
+        } else {
+            Circle()
+                .fill(Color.appAccent.opacity(0.15))
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Image(systemName: AssetCatalog.Icons.person)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.appAccent)
+                )
+        }
+    }
+    
+    private func createNewPerson() {
+        let trimmed = newPersonName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        Task {
+            do {
+                try await viewModel.createNewPerson(name: trimmed)
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+                showingErrorAlert = true
+            }
+        }
+    }
+}
+
+#Preview {
+    PersonPickerView(viewModel: ReminderEditorViewModel())
+}

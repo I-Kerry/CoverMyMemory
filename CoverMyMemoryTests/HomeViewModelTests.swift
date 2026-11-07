@@ -106,4 +106,56 @@ final class HomeViewModelTests: XCTestCase {
         await viewModel.deleteReminder(id: item.id)
         XCTAssertEqual(viewModel.totalCount, 1)
     }
+    
+    func testCompletionIsNotCarriedOverToNextDay() async {
+        let calendar = Calendar.current
+        let today = Date()
+        let weekday = calendar.component(.weekday, from: today)
+        let tomorrowWeekday = calendar.component(.weekday, from: calendar.date(byAdding: .day, value: 1, to: today)!)
+        
+        let recurring = Reminder(
+            title: "Daily Habit",
+            dateRequired: today,
+            repeatWeekdays: [weekday, tomorrowWeekday],
+            isCompleted: false
+        )
+        try? await reminderRepo.save(recurring)
+        
+        await viewModel.loadData()
+        guard let itemToday = viewModel.displayedItems.first(where: { $0.title == "Daily Habit" }) else {
+            XCTFail("Daily habit should appear today")
+            return
+        }
+        
+        await viewModel.toggleCompletion(for: itemToday.id)
+        let updatedToday = viewModel.displayedItems.first(where: { $0.title == "Daily Habit" })
+        XCTAssertTrue(updatedToday?.isCompleted ?? false, "Should be completed today")
+        
+        viewModel.selectNextDay()
+        await viewModel.loadData()
+        let itemTomorrow = viewModel.displayedItems.first(where: { $0.title == "Daily Habit" })
+        XCTAssertNotNil(itemTomorrow)
+        XCTAssertFalse(itemTomorrow?.isCompleted ?? true, "Should NOT be completed tomorrow!")
+    }
+    
+    func testCannotCompleteTaskOnFutureDate() async {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
+        let futureTask = Reminder(title: "Future Plan", dateRequired: tomorrow, isCompleted: false)
+        try? await reminderRepo.save(futureTask)
+        
+        viewModel.selectDate(tomorrow)
+        await viewModel.loadData()
+        
+        guard let item = viewModel.displayedItems.first(where: { $0.title == "Future Plan" }) else {
+            XCTFail("Future task should appear on its date")
+            return
+        }
+        
+        XCTAssertFalse(item.canBeCompleted, "canBeCompleted must be false for future dates")
+        
+        await viewModel.toggleCompletion(for: item.id)
+        let itemAfterAttempt = viewModel.displayedItems.first(where: { $0.title == "Future Plan" })
+        XCTAssertFalse(itemAfterAttempt?.isCompleted ?? true, "Future task must NOT be marked as completed")
+    }
 }

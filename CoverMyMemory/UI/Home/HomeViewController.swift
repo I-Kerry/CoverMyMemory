@@ -46,8 +46,8 @@ public final class HomeViewController: UIViewController {
         table.backgroundColor = .clear
         table.separatorStyle = .none
         table.rowHeight = UITableView.automaticDimension
-        table.estimatedRowHeight = 110
-        table.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 90, right: 0)
+        table.estimatedRowHeight = Constants.Layout.estimatedCardRowHeight
+        table.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: Constants.Layout.tableBottomInset, right: 0)
         table.register(ReminderCell.self, forCellReuseIdentifier: ReminderCell.reuseIdentifier)
         table.delegate = self
         table.translatesAutoresizingMaskIntoConstraints = false
