@@ -123,22 +123,26 @@ public struct PersonPickerView: View {
     
     @ViewBuilder
     private func personAvatarView(for person: Person) -> some View {
-        if let thumbData = person.photoThumbData, let uiImage = UIImage(data: thumbData) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 32, height: 32)
-                .clipShape(Circle())
-        } else {
-            Circle()
-                .fill(Color.appAccent.opacity(0.15))
-                .frame(width: 32, height: 32)
-                .overlay(
-                    Image(systemName: AssetCatalog.Icons.person)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.appAccent)
-                )
-        }
+//        if let thumbData = person.photoThumbData, let uiImage = UIImage(data: thumbData) {
+//            Image(uiImage: uiImage)
+//                .resizable()
+//                .scaledToFill()
+//                .frame(width: 32, height: 32)
+//                .clipShape(Circle())
+//        } else {
+//            Circle()
+//                .fill(Color.appAccent.opacity(0.15))
+//                .frame(width: 32, height: 32)
+//                .overlay(
+//                    Image(systemName: AssetCatalog.Icons.person)
+//                        .font(.system(size: 14, weight: .semibold))
+//                        .foregroundColor(.appAccent)
+//                )
+//        }
+        PersonAvatarView(
+            photoData: person.photoThumbData,
+            name: person.name,
+            size: Constants.Layout.smallAvatarSize)
     }
     
     private func createNewPerson() {
