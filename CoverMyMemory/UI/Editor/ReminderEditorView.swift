@@ -65,13 +65,13 @@ public struct ReminderEditorView: View {
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundColor(.appTextSecondary)
-                                        .font(.system(size: 18))
+                                        .font(.system(size: Constants.Layout.accessoryIconSize))
                                 }
                                 .buttonStyle(.borderless)
                             } else {
                                 Image(systemName: AssetCatalog.Icons.person)
                                     .foregroundColor(.appAccent)
-                                    .frame(width: 32, height: 32)
+                                    .frame(width: Constants.Layout.smallAvatarSize, height: Constants.Layout.smallAvatarSize)
                                     .background(Color.appAccent.opacity(0.12))
                                     .clipShape(Circle())
                                 
@@ -139,7 +139,7 @@ public struct ReminderEditorView: View {
                                 }) {
                                     Text(day.shortName)
                                         .font(.caption2.weight(.semibold))
-                                        .frame(maxWidth: .infinity, minHeight: 34)
+                                        .frame(maxWidth: .infinity, minHeight: Constants.Layout.weekdayButtonHeight)
                                         .background(isSelected ? Color.appAccent : Color(UIColor.tertiarySystemFill))
                                         .foregroundColor(isSelected ? .white : .appTextPrimary)
                                         .clipShape(RoundedRectangle(cornerRadius: Constants.Radius.small))
@@ -224,15 +224,15 @@ public struct ReminderEditorView: View {
             Image(uiImage: uiImage)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 32, height: 32)
+                .frame(width: Constants.Layout.smallAvatarSize, height: Constants.Layout.smallAvatarSize)
                 .clipShape(Circle())
         } else {
             Circle()
                 .fill(Color.appAccent.opacity(0.15))
-                .frame(width: 32, height: 32)
+                .frame(width: Constants.Layout.smallAvatarSize, height: Constants.Layout.smallAvatarSize)
                 .overlay(
                     Image(systemName: AssetCatalog.Icons.person)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: Constants.Layout.avatarPlaceholderSize, weight: .semibold))
                         .foregroundColor(.appAccent)
                 )
         }

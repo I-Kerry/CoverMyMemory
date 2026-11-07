@@ -34,11 +34,6 @@ public final class ReminderEditorViewController: UIHostingController<ReminderEdi
     @MainActor required dynamic init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
-    public override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(true, animated: false)
-    }
 }
 
 #Preview {

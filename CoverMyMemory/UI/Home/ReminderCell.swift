@@ -132,8 +132,8 @@ public final class ReminderCell: UITableViewCell {
             
             checkmarkButton.topAnchor.constraint(equalTo: containerCardView.topAnchor, constant: Constants.Spacing.medium),
             checkmarkButton.trailingAnchor.constraint(equalTo: containerCardView.trailingAnchor, constant: -Constants.Spacing.medium),
-            checkmarkButton.widthAnchor.constraint(equalToConstant: 28),
-            checkmarkButton.heightAnchor.constraint(equalToConstant: 28),
+            checkmarkButton.widthAnchor.constraint(equalToConstant: Constants.Layout.checkmarkButtonDimension),
+            checkmarkButton.heightAnchor.constraint(equalToConstant: Constants.Layout.checkmarkButtonDimension),
             
             titleLabel.topAnchor.constraint(equalTo: avatarImageView.bottomAnchor, constant: Constants.Spacing.small),
             titleLabel.leadingAnchor.constraint(equalTo: avatarImageView.leadingAnchor),
@@ -161,7 +161,8 @@ public final class ReminderCell: UITableViewCell {
         personNameLabel.text = item.personName.map { "For \($0)" } ?? "For You"
         
         if let time = item.timeFormatted {
-            timeLabel.text = item.isCompleted ? time : "\(time) · Today"
+            //            timeLabel.text = item.isCompleted ? time : "\(time) · Today"
+            timeLabel.text = time
         } else {
             timeLabel.text = "All day"
         }
@@ -174,7 +175,10 @@ public final class ReminderCell: UITableViewCell {
         }
         
         if item.isCompleted {
+            
             containerCardView.backgroundColor = .appCardCompleted
+            checkmarkButton.isEnabled = true
+            checkmarkButton.alpha = 1.0
             
             let checkConfig = UIImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
             let checkImage = UIImage(systemName: AssetCatalog.Icons.checkmarkCircle, withConfiguration: checkConfig)?
@@ -192,7 +196,7 @@ public final class ReminderCell: UITableViewCell {
                 contentTrailingToThumbnailConstraint?.isActive = true
             } else {
                 thumbnailImageView.isHidden = true
-                statusLabel.text = "Completed today"
+                statusLabel.text = "Completed"
                 statusLabel.textColor = .appTextGreen
                 
                 contentTrailingToThumbnailConstraint?.isActive = false
@@ -202,12 +206,22 @@ public final class ReminderCell: UITableViewCell {
             containerCardView.backgroundColor = .appCardBackground
             thumbnailImageView.isHidden = true
             
-            let circleConfig = UIImage.SymbolConfiguration(pointSize: 26, weight: .regular)
+            checkmarkButton.isEnabled = item.canBeCompleted
+            checkmarkButton.alpha = item.canBeCompleted ? 1.0 : 0.3
+            
+            let circleConfig = UIImage.SymbolConfiguration(pointSize: Constants.Layout.circleSymbolPointSize, weight: .regular)
             let circleImage = UIImage(systemName: AssetCatalog.Icons.circle, withConfiguration: circleConfig)?
                 .withTintColor(UIColor.systemGray4, renderingMode: .alwaysOriginal)
             checkmarkButton.setImage(circleImage, for: .normal)
             
-            statusLabel.text = item.deadlineText ?? "No deadline"
+            //            statusLabel.text = item.deadlineText ?? "No deadline"
+            //            statusLabel.textColor = .appTextSecondary
+            
+            if !item.canBeCompleted {
+                statusLabel.text = item.deadlineText ?? "Scheduled"
+            } else {
+                statusLabel.text = item.deadlineText ?? "No deadline"
+            }
             statusLabel.textColor = .appTextSecondary
             
             contentTrailingToThumbnailConstraint?.isActive = false

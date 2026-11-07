@@ -45,12 +45,34 @@ public enum Constants {
         public static let cardGap: CGFloat = 12
         /// Avatar dimension: 56pt
         public static let avatarSize: CGFloat = 56
+        /// Small contact avatar in editor/picker: 32pt
+        public static let smallAvatarSize: CGFloat = 32
+        /// Avatar placeholder icon point size: 14pt
+        public static let avatarPlaceholderSize: CGFloat = 14
         /// Completed card thumbnail size: 64pt
         public static let thumbnailSize: CGFloat = 64
         /// Floating button size: 52pt
         public static let floatingButtonSize: CGFloat = 52
         /// Checkmark tap target: 32pt
         public static let checkmarkSize: CGFloat = 32
+        /// Checkmark button dimension: 28pt
+        public static let checkmarkButtonDimension: CGFloat = 28
+        /// Filled checkmark symbol point size: 28pt
+        public static let checkmarkSymbolPointSize: CGFloat = 28
+        /// Empty circle symbol point size: 26pt
+        public static let circleSymbolPointSize: CGFloat = 26
+        /// Weekday recurrence button minimum height: 34pt
+        public static let weekdayButtonHeight: CGFloat = 34
+        /// Accessory icon point size (clear/cancel): 18pt
+        public static let accessoryIconSize: CGFloat = 18
+        /// List icon frame size in picker: 20pt
+        public static let pickerIconSize: CGFloat = 20
+        /// Floating menu action icon size: 20pt
+        public static let floatingMenuIconSize: CGFloat = 20
+        /// Estimated row height for reminder cards: 110pt
+        public static let estimatedCardRowHeight: CGFloat = 110
+        /// Bottom content inset for table view to clear floating controls: 90pt
+        public static let tableBottomInset: CGFloat = 90
     }
     
     // MARK: - Animation
