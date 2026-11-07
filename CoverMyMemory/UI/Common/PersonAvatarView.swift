@@ -73,3 +73,7 @@ public struct PersonAvatarView: View {
         }
     }
 }
+
+#Preview {
+    PersonAvatarView(photoData: nil, name: "Samuel", size: 260)
+}

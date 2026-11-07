@@ -67,6 +67,8 @@ public enum Constants {
         public static let accessoryIconSize: CGFloat = 18
         /// List icon frame size in picker: 20pt
         public static let pickerIconSize: CGFloat = 20
+        /// Photo picker icon size: 24pt
+        public static let photoPickerIconSize: CGFloat = 24
         /// Floating menu action icon size: 20pt
         public static let floatingMenuIconSize: CGFloat = 20
         /// Estimated row height for reminder cards: 110pt
