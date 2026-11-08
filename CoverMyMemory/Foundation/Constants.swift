@@ -39,6 +39,12 @@ public enum Constants {
     
     // MARK: - Layout Metrics
     public enum Layout {
+        /// Medium contact avatar in person library list: 44pt
+        public static let mediumAvatarSize: CGFloat = 44
+        /// Large contact avatar in person editor: 88pt
+        public static let largeAvatarSize: CGFloat = 88
+        /// Empty state icon size: 48pt
+        public static let emptyStateIconSize: CGFloat = 48
         /// Standard horizontal margin: 16pt
         public static let horizontalInset: CGFloat = 16
         /// Vertical spacing between cards: 12pt

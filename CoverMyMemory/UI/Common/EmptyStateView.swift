@@ -41,7 +41,7 @@ public struct EmptyStateView: View {
             
             VStack(spacing: Constants.Spacing.xxSmall) {
                 Text(title)
-                    .font(.appLargeTitle)
+                    .font(.appHeadline)
                     .foregroundColor(.appTextPrimary)
                     .multilineTextAlignment(.center)
                 
