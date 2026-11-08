@@ -17,6 +17,12 @@ public extension Font {
     /// Headline for task titles
     static let appCardTitle = Font.system(.headline, design: .default).weight(.semibold)
     
+    /// Headline for list items and section headers
+    static let appHeadline = Font.system(.headline, design: .default).weight(.semibold)
+    
+    /// Body font for text fields and descriptions
+    static let appBody = Font.system(.body, design: .default)
+    
     /// Subheadline for person names and dates
     static let appSubheadline = Font.system(.subheadline, design: .default).weight(.medium)
     

@@ -49,6 +49,13 @@ public final class FilePhotoStorage: PhotoStorage {
         return (fileName, thumbData)
     }
     
+    public func savePhotoData(_ data: Data) async throws -> (fileName: String, thumbnailData: Data) {
+        guard let image = UIImage(data: data) else {
+            throw NSError(domain: "FilePhotoStorage", code: 3, userInfo: [NSLocalizedDescriptionKey: "Invalid image data."])
+        }
+        return try await savePhoto(image)
+    }
+    
     public func loadPhoto(fileName: String) async -> UIImage? {
         let fileURL = photosDirectoryURL.appendingPathComponent(fileName)
         guard let data = try? Data(contentsOf: fileURL) else { return nil }

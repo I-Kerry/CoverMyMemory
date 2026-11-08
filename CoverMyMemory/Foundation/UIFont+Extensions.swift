@@ -26,6 +26,16 @@ public extension UIFont {
         return UIFont(descriptor: descriptor, size: 0)
     }
     
+    static var appHeadline: UIFont {
+        let descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .headline)
+            .withSymbolicTraits(.traitBold) ?? UIFontDescriptor.preferredFontDescriptor(withTextStyle: .headline)
+        return UIFont(descriptor: descriptor, size: 0)
+    }
+    
+    static var appBody: UIFont {
+        UIFont.preferredFont(forTextStyle: .body)
+    }
+    
     static var appSubheadline: UIFont {
         UIFont.preferredFont(forTextStyle: .subheadline)
     }

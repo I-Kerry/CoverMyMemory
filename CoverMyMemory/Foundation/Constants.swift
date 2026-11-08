@@ -39,6 +39,12 @@ public enum Constants {
     
     // MARK: - Layout Metrics
     public enum Layout {
+        /// Medium contact avatar in person library list: 44pt
+        public static let mediumAvatarSize: CGFloat = 44
+        /// Large contact avatar in person editor: 88pt
+        public static let largeAvatarSize: CGFloat = 88
+        /// Empty state icon size: 48pt
+        public static let emptyStateIconSize: CGFloat = 48
         /// Standard horizontal margin: 16pt
         public static let horizontalInset: CGFloat = 16
         /// Vertical spacing between cards: 12pt
@@ -67,6 +73,8 @@ public enum Constants {
         public static let accessoryIconSize: CGFloat = 18
         /// List icon frame size in picker: 20pt
         public static let pickerIconSize: CGFloat = 20
+        /// Photo picker icon size: 24pt
+        public static let photoPickerIconSize: CGFloat = 24
         /// Floating menu action icon size: 20pt
         public static let floatingMenuIconSize: CGFloat = 20
         /// Estimated row height for reminder cards: 110pt

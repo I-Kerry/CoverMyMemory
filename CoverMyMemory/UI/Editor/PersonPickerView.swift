@@ -11,10 +11,7 @@ public struct PersonPickerView: View {
     @ObservedObject public var viewModel: ReminderEditorViewModel
     @Environment(\.dismiss) private var dismiss
     
-    @State private var showingAddPersonAlert = false
-    @State private var newPersonName = ""
-    @State private var errorMessage: String?
-    @State private var showingErrorAlert = false
+    @State private var isPresentingCreatePersonSheet = false
     
     public init(viewModel: ReminderEditorViewModel) {
         self.viewModel = viewModel
@@ -97,64 +94,49 @@ public struct PersonPickerView: View {
                 
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
-                        newPersonName = ""
-                        showingAddPersonAlert = true
+                        isPresentingCreatePersonSheet = true
                     }) {
                         Image(systemName: AssetCatalog.Icons.add)
                     }
                 }
             }
-            .alert("New Person", isPresented: $showingAddPersonAlert) {
-                TextField("Full Name", text: $newPersonName)
-                Button("Cancel", role: .cancel) { }
-                Button("Add") {
-                    createNewPerson()
+
+            .sheet(isPresented: $isPresentingCreatePersonSheet) {
+                PersonEditorView(personId: nil) {
+                    Task {
+                        await viewModel.loadData()
+                        if let latest = viewModel.availablePeople.max(by: { $0.createdAt < $1.createdAt }) {
+                            viewModel.selectPerson(latest)
+                        }
+                        dismiss()
+                    }
                 }
-            } message: {
-                Text("Enter the name of the person you want to add.")
-            }
-            .alert("Error", isPresented: $showingErrorAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(errorMessage ?? "An error occurred while creating person.")
             }
         }
     }
     
     @ViewBuilder
     private func personAvatarView(for person: Person) -> some View {
-        if let thumbData = person.photoThumbData, let uiImage = UIImage(data: thumbData) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 32, height: 32)
-                .clipShape(Circle())
-        } else {
-            Circle()
-                .fill(Color.appAccent.opacity(0.15))
-                .frame(width: 32, height: 32)
-                .overlay(
-                    Image(systemName: AssetCatalog.Icons.person)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.appAccent)
-                )
-        }
+        PersonAvatarView(
+            photoData: person.photoThumbData,
+            name: person.name,
+            size: Constants.Layout.smallAvatarSize)
     }
     
-    private func createNewPerson() {
-        let trimmed = newPersonName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        
-        Task {
-            do {
-                try await viewModel.createNewPerson(name: trimmed)
-                dismiss()
-            } catch {
-                errorMessage = error.localizedDescription
-                showingErrorAlert = true
-            }
-        }
-    }
+//    private func createNewPerson() {
+//        let trimmed = newPersonName.trimmingCharacters(in: .whitespacesAndNewlines)
+//        guard !trimmed.isEmpty else { return }
+//        
+//        Task {
+//            do {
+//                try await viewModel.createNewPerson(name: trimmed)
+//                dismiss()
+//            } catch {
+//                errorMessage = error.localizedDescription
+//                showingErrorAlert = true
+//            }
+//        }
+//    }
 }
 
 #Preview {
