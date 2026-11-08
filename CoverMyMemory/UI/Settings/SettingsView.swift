@@ -47,6 +47,27 @@ public struct SettingsView: View {
                     .font(.appCaption)
             }
             
+            // MARK: - People Section
+            Section {
+                NavigationLink {
+                    PersonLibraryView()
+                } label: {
+                    HStack(spacing: Constants.Spacing.medium) {
+                        Image(systemName: AssetCatalog.Icons.person2)
+                            .frame(width: Constants.Layout.pickerIconSize)
+                            .foregroundColor(.appAccent)
+                        
+                        Text("Person Library")
+                            .foregroundColor(.appTextPrimary)
+                    }
+                }
+            } header: {
+                Text("PEOPLE")
+            } footer: {
+                Text("Manage contacts and loved ones assigned to your reminders and memory prompts.")
+                    .font(.appCaption)
+            }
+            
             // MARK: - Appearance Section
             Section {
                 ForEach(AppTheme.allCases) { theme in
