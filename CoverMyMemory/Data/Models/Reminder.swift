@@ -74,7 +74,7 @@ public final class Reminder {
         if completedDates.contains(key) {
             return true
         }
-        if isCompleted, let completedAt = completedAt {
+        if completedDates.isEmpty && isCompleted && repeatWeekdays.isEmpty, let completedAt = completedAt {
             return Calendar.current.isDate(completedAt, inSameDayAs: date)
         }
         return false
