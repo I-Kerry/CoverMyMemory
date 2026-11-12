@@ -10,6 +10,7 @@ import Foundation
 import Foundation
 import UserNotifications
 
+@MainActor
 public final class UserNotificationsScheduler: NotificationScheduler {
     
     private let center: UNUserNotificationCenter
