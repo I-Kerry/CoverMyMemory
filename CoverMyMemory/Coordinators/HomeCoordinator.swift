@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftUI
 
 public final class HomeCoordinator: Coordinator {
     public var childCoordinators: [Coordinator] = []
@@ -65,6 +66,24 @@ public final class HomeCoordinator: Coordinator {
         navigationController.present(editorVC, animated: true)    }
     
     public func showCameraCompletion(reminderId: UUID) {
-        // Will present Camera Sheet in Stage 6
+        let homeVC = navigationController.viewControllers.compactMap { $0 as? HomeViewController }.first
+        let selectedDate = homeVC?.viewModel?.selectedDate ?? Date()
+        
+        let completionView = CompletionSheetView(
+            reminderId: reminderId,
+            targetDate: selectedDate
+        ) { [weak homeVC] in
+            Task { @MainActor [weak homeVC] in
+                await homeVC?.viewModel?.loadData()
+            }
+        }
+        
+        let hostingVC = UIHostingController(rootView: completionView)
+        hostingVC.modalPresentationStyle = .pageSheet
+        if let sheet = hostingVC.sheetPresentationController {
+            sheet.detents = [.large()]
+            sheet.prefersGrabberVisible = true
+        }
+        navigationController.present(hostingVC, animated: true)
     }
 }
