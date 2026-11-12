@@ -25,9 +25,22 @@
 		35670B333094D19D00399009 /* CoverMyMemoryTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CoverMyMemoryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		35670AFB30A5BF970056C236 /* Exceptions for "CoverMyMemory" folder in "CoverMyMemory" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 35670B073094B3CE00399009 /* CoverMyMemory */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		35670B0A3094B3CE00399009 /* CoverMyMemory */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				35670AFB30A5BF970056C236 /* Exceptions for "CoverMyMemory" folder in "CoverMyMemory" target */,
+			);
 			path = CoverMyMemory;
 			sourceTree = "<group>";
 		};
@@ -340,6 +353,10 @@
 				DEVELOPMENT_TEAM = 5ZJ6K5QGT4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CoverMyMemory/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "CoverMyMemory needs camera access to capture photo proof when completing reminders.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "CoverMyMemory needs permission to save photos to your library as proof of completing a reminder.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CoverMyMemory needs access to your photo library so you can select a photo as proof of completing a reminder.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -373,6 +390,10 @@
 				DEVELOPMENT_TEAM = 5ZJ6K5QGT4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CoverMyMemory/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "CoverMyMemory needs camera access to capture photo proof when completing reminders.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "CoverMyMemory needs permission to save photos to your library as proof of completing a reminder.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CoverMyMemory needs access to your photo library so you can select a photo as proof of completing a reminder.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

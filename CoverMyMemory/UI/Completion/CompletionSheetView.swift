@@ -13,6 +13,7 @@ public struct CompletionSheetView: View {
 
     @State public var viewModel: CompletionSheetViewModel
     @State private var showingCameraPicker = false
+    @State private var showingCameraPermissionAlert = false
     @State private var capturedCameraImage: UIImage? = nil
     @State private var selectedPhotoLibraryItem: PhotosPickerItem? = nil
     
@@ -41,6 +42,16 @@ public struct CompletionSheetView: View {
                 }
                 .fullScreenCover(isPresented: $showingCameraPicker) {
                     cameraPickerSheet
+                }
+                .alert("Camera Access Required", isPresented: $showingCameraPermissionAlert) {
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Please enable camera access in Settings to capture photo proof when completing reminders.")
                 }
                 .onChange(of: capturedCameraImage) { _, newImage in
                     handleCameraImage(newImage)
@@ -140,6 +151,31 @@ public struct CompletionSheetView: View {
     }
     
     // MARK: - Action Handlers
+    private func requestCameraAccessAndOpen() {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            showingCameraPicker = true
+            return
+        }
+        
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        switch status {
+        case .authorized:
+            showingCameraPicker = true
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                Task { @MainActor in
+                    if granted {
+                        self.showingCameraPicker = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            showingCameraPermissionAlert = true
+        @unknown default:
+            showingCameraPicker = true
+        }
+    }
+    
     private func handleCameraImage(_ image: UIImage?) {
         guard let image = image, let data = image.jpegData(compressionQuality: 0.85) else { return }
         viewModel.setPhotoData(data)
