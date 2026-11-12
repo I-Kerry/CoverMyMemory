@@ -23,7 +23,7 @@ public final class SwiftDataReminderRepository: ReminderRepository {
     public func fetchReminders(for date: Date) async throws -> [Reminder] {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+        guard calendar.date(byAdding: .day, value: 1, to: startOfDay) != nil else {
             return []
         }
         let weekday = calendar.component(.weekday, from: date)
