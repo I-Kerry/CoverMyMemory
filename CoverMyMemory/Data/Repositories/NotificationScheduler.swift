@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 public protocol NotificationScheduler: AnyObject {
     func requestAuthorization() async throws -> Bool
     func scheduleNotifications(for reminder: Reminder, personName: String?) async throws

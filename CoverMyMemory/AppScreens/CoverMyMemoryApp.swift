@@ -15,6 +15,10 @@ struct CoverMyMemoryApp: App {
         WindowGroup {
             MainTabBarWrapper()
                 .preferredColorScheme(colorScheme)
+                .task {
+                    let scheduler = UserNotificationsScheduler()
+                    _ = try? await scheduler.requestAuthorization()
+                }
         }
         .modelContainer(AppDatabase.shared.container)
     }

@@ -342,6 +342,21 @@ extension HomeViewController: UITableViewDelegate {
         }
     }
     
+    public func tableView(_ tableView: UITableView, leadingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        guard let item = dataSource?.itemIdentifier(for: indexPath), item.canBeCompleted else { return nil }
+        
+        let photoAction = UIContextualAction(style: .normal, title: "Photo") { [weak self] (_, _, completion) in
+            self?.coordinator?.showCameraCompletion(reminderId: item.id)
+            completion(true)
+        }
+        photoAction.backgroundColor = .appAccent
+        photoAction.image = UIImage(systemName: AssetCatalog.Icons.camera)
+        
+        let configuration = UISwipeActionsConfiguration(actions: [photoAction])
+        configuration.performsFirstActionWithFullSwipe = true
+        return configuration
+    }
+    
     public func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         guard let item = dataSource?.itemIdentifier(for: indexPath) else { return nil }
         

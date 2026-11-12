@@ -14,6 +14,7 @@ public final class ReminderEditorViewModel: ObservableObject {
     // MARK: - Dependencies
     private let reminderRepository: ReminderRepository
     private let personRepository: PersonRepository
+    private let notificationScheduler: NotificationScheduler
     public let reminderId: UUID?
     
     // MARK: - Published State
@@ -41,6 +42,7 @@ public final class ReminderEditorViewModel: ObservableObject {
         reminderId: UUID? = nil,
         reminderRepository: ReminderRepository? = nil,
         personRepository: PersonRepository? = nil,
+        notificationScheduler: NotificationScheduler? = nil,
         initialDate: Date = Date()
     ) {
         self.reminderId = reminderId
@@ -48,6 +50,7 @@ public final class ReminderEditorViewModel: ObservableObject {
         
         self.reminderRepository = reminderRepository ?? SwiftDataReminderRepository()
         self.personRepository = personRepository ?? SwiftDataPersonRepository()
+        self.notificationScheduler = notificationScheduler ?? UserNotificationsScheduler()
         
         self.date = initialDate
         self.time = initialDate
@@ -162,6 +165,7 @@ public final class ReminderEditorViewModel: ObservableObject {
             reminder.personID = selectedPerson?.id
             
             try await reminderRepository.update(reminder)
+            try await notificationScheduler.scheduleNotifications(for: reminder, personName: selectedPerson?.name)
             return reminder
         } else {
             let newReminder = Reminder(
@@ -174,12 +178,14 @@ public final class ReminderEditorViewModel: ObservableObject {
             )
             
             try await reminderRepository.save(newReminder)
+            try await notificationScheduler.scheduleNotifications(for: newReminder, personName: selectedPerson?.name)
             return newReminder
         }
     }
     
     public func delete() async throws {
         guard let id = reminderId else { return }
+        await notificationScheduler.cancelNotifications(for: id)
         guard let reminder = try await reminderRepository.fetch(by: id) else { return }
         try await reminderRepository.delete(reminder)
     }
