@@ -43,7 +43,7 @@ public struct SettingsView: View {
             } header: {
                 Text("NOTIFICATIONS")
             } footer: {
-                Text("Get a gentle nudge when a reminder is due. Sound and delivery are managed in iOS Settings.")
+                Text("Get a gentle nudge 1 hour before and when a reminder is due. Sound and delivery are managed in iOS Settings.")
                     .font(.appCaption)
             }
             
