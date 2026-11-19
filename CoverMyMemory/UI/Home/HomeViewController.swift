@@ -211,6 +211,13 @@ public final class HomeViewController: UIViewController {
             }
             .store(in: &cancellables)
         
+        viewModel.$headerTitle
+            .receive(on: RunLoop.main)
+            .sink { [weak self] title in
+                self?.titleLabel.text = title
+            }
+            .store(in: &cancellables)
+        
         viewModel.$displayedItems
             .receive(on: RunLoop.main)
             .sink { [weak self] items in
