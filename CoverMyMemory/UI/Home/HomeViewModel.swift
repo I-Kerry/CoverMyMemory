@@ -26,6 +26,7 @@ public final class HomeViewModel: ObservableObject {
     private let reminderRepository: ReminderRepository
     private let personRepository: PersonRepository
     private let photoStorage: PhotoStorage
+    private let notificationScheduler: NotificationScheduler
     
     private let navDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -41,8 +42,9 @@ public final class HomeViewModel: ObservableObject {
     
     @Published public private(set) var selectedDate: Date
     @Published public private(set) var displayedItems: [ReminderItem] = []
-    @Published public private(set) var formattedDateString: String = ""
-    @Published public private(set) var statusText: String = "0 completed"
+    @Published public private(set) var formattedDateString = ""
+    @Published public private(set) var headerTitle = "Today"
+    @Published public private(set) var statusText = "0 completed"
     @Published public private(set) var totalCount: Int = 0
     @Published public private(set) var completedCount: Int = 0
     
@@ -57,17 +59,11 @@ public final class HomeViewModel: ObservableObject {
     private var rawReminders: [Reminder] = []
     private var peopleCache: [UUID: Person] = [:]
     
-    public var canCompleteOnSelectedDay: Bool {
-        let calendar = Calendar.current
-        let selectedStart = calendar.startOfDay(for: selectedDate)
-        let todayStart = calendar.startOfDay(for: Date())
-        return selectedStart <= todayStart
-    }
-    
     public init(
         reminderRepository: ReminderRepository? = nil,
         personRepository: PersonRepository? = nil,
         photoStorage: PhotoStorage? = nil,
+        notificationScheduler: NotificationScheduler? = nil,
         initialDate: Date = Date()
     ) {
         let storage = photoStorage ?? FilePhotoStorage()
@@ -76,6 +72,7 @@ public final class HomeViewModel: ObservableObject {
         let sharedContext = AppDatabase.shared.context
         self.reminderRepository = reminderRepository ?? SwiftDataReminderRepository(modelContext: sharedContext)
         self.personRepository = personRepository ?? SwiftDataPersonRepository(modelContext: sharedContext)
+        self.notificationScheduler = notificationScheduler ?? UserNotificationsScheduler()
         
         self.selectedDate = initialDate
         updateFormattedDateString()
@@ -116,10 +113,17 @@ public final class HomeViewModel: ObservableObject {
         Task { await loadData() }
     }
     
+    public var canCompleteOnSelectedDate: Bool {
+        let calendar = Calendar.current
+        let selectedStart = calendar.startOfDay(for: selectedDate)
+        let todayStart = calendar.startOfDay(for: Date())
+        return selectedStart <= todayStart
+    }
+    
     public func toggleCompletion(for reminderId: UUID) async {
         guard let reminder = rawReminders.first(where: { $0.id == reminderId }) else { return }
         
-        guard canCompleteOnSelectedDay else { return }
+        guard canCompleteOnSelectedDate else { return }
         
         let isNowCompleted = reminder.toggleCompletion(on: selectedDate)
         if !isNowCompleted {
@@ -131,6 +135,14 @@ public final class HomeViewModel: ObservableObject {
         }
         
         try? await reminderRepository.update(reminder)
+        
+        let personName = reminder.personID.flatMap { peopleCache[$0]?.name }
+        if reminder.repeatWeekdays.isEmpty && isNowCompleted {
+            await notificationScheduler.cancelNotifications(for: reminder.id)
+        } else {
+            try? await notificationScheduler.scheduleNotifications(for: reminder, personName: personName)
+        }
+        
         applyFilterAndSort()
     }
     
@@ -138,11 +150,14 @@ public final class HomeViewModel: ObservableObject {
         guard let reminder = rawReminders.first(where: { $0.id == id }) else { return }
         reminder.title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         try? await reminderRepository.update(reminder)
+        let personName = reminder.personID.flatMap { peopleCache[$0]?.name }
+        try? await notificationScheduler.scheduleNotifications(for: reminder, personName: personName)
         applyFilterAndSort()
     }
     
     public func deleteReminder(id: UUID) async {
         guard let reminder = rawReminders.first(where: { $0.id == id }) else { return }
+        await notificationScheduler.cancelNotifications(for: id)
         if let fileName = reminder.photoFileName {
             try? await photoStorage.deletePhoto(fileName: fileName)
         }
@@ -153,10 +168,23 @@ public final class HomeViewModel: ObservableObject {
     
     private func updateFormattedDateString() {
         formattedDateString = navDateFormatter.string(from: selectedDate)
+        
+        let calendar = Calendar.current
+        if calendar.isDateInToday(selectedDate) {
+            headerTitle = "Today"
+        } else if calendar.isDateInYesterday(selectedDate) {
+            headerTitle = "Yesterday"
+        } else if calendar.isDateInTomorrow(selectedDate) {
+            headerTitle = "Tomorrow"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMMM d"
+            headerTitle = formatter.string(from: selectedDate)
+        }
     }
     
     private func applyFilterAndSort() {
-        let complete = canCompleteOnSelectedDay
+        let complete = canCompleteOnSelectedDate
         
         self.totalCount = rawReminders.count
         self.completedCount = rawReminders.filter { $0.isCompleted(on: selectedDate) }.count
