@@ -13,10 +13,24 @@ import UserNotifications
 @MainActor
 public final class UserNotificationsScheduler: NotificationScheduler {
     
-    private let center: UNUserNotificationCenter
+    private enum ScheduleConfig {
+        static let defaultPrimaryHour = 12
+        static let defaultPrimaryMinute = 0
+        static let endOfDayWarningHour = 23
+        static let endOfDayWarningMinute = 0
+        static let maxLookaheadDays = 30
+        static let maxOccurrencesToSchedule = 3
+    }
     
-    public init(center: UNUserNotificationCenter = .current()) {
+    private let center: UNUserNotificationCenter
+    private let preferencesStorage: UserPreferencesStorage
+    
+    public init(
+        center: UNUserNotificationCenter = .current(),
+        preferencesStorage: UserPreferencesStorage? = nil)
+    {
         self.center = center
+        self.preferencesStorage = preferencesStorage ?? UserDefaultsPreferencesStorage()
     }
     
     public func requestAuthorization() async throws -> Bool {
@@ -24,9 +38,11 @@ public final class UserNotificationsScheduler: NotificationScheduler {
     }
     
     public func scheduleNotifications(for reminder: Reminder, personName: String?) async throws {
+        // Always cancel any existing pending and delivered notifications for this reminder first
         await cancelNotifications(for: reminder.id)
         
-        guard reminder.deadlineEnabled else { return }
+        // Respect global notification toggle via injected UserPreferencesStorage
+        guard preferencesStorage.notificationsEnabled else { return }
         
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
@@ -34,90 +50,161 @@ public final class UserNotificationsScheduler: NotificationScheduler {
         }
         
         let calendar = Calendar.current
+        let now = Date()
+        let todayStart = calendar.startOfDay(for: now)
         
-        let timeSource = reminder.timeOptional ?? reminder.dateRequired
-        let hour = calendar.component(.hour, from: timeSource)
-        let minute = calendar.component(.minute, from: timeSource)
+        // Determine primary time: custom time if set, otherwise 12:00 noon
+        let hasCustomTime = reminder.timeOptional != nil
+        let primaryHour = hasCustomTime ? calendar.component(.hour, from: reminder.timeOptional!) : ScheduleConfig.defaultPrimaryHour
+        let primaryMinute = hasCustomTime ? calendar.component(.minute, from: reminder.timeOptional!) : ScheduleConfig.defaultPrimaryMinute
         
-        let advanceContent = UNMutableNotificationContent()
-        advanceContent.title = "Reminder (1 hour left)"
-        if let name = personName, !name.isEmpty {
-            advanceContent.body = "1 hour left for \(name)'s task: \"\(reminder.title)\""
-        } else {
-            advanceContent.body = "1 hour left to complete: \"\(reminder.title)\""
+        let targetDays = upcomingUncompletedDays(
+            for: reminder,
+            calendar: calendar,
+            todayStart: todayStart,
+            now: now,
+            primaryHour: primaryHour,
+            primaryMinute: primaryMinute
+        )
+        
+        for day in targetDays {
+            let dateKey = Reminder.dateFormatter.string(from: day)
+            
+            // 1. Primary notification (12:00 or user-specified time)
+            var primaryComponents = calendar.dateComponents([.year, .month, .day], from: day)
+            primaryComponents.hour = primaryHour
+            primaryComponents.minute = primaryMinute
+            
+            if let primaryFireDate = calendar.date(from: primaryComponents), primaryFireDate > now {
+                let primaryContent = makeNotificationContent(
+                    for: reminder,
+                    personName: personName,
+                    isEndOfDayWarning: false
+                )
+                let primaryTrigger = UNCalendarNotificationTrigger(dateMatching: primaryComponents, repeats: false)
+                let primaryRequest = UNNotificationRequest(
+                    identifier: "\(reminder.id.uuidString)-\(dateKey)-primary",
+                    content: primaryContent,
+                    trigger: primaryTrigger
+                )
+                try await center.add(primaryRequest)
+            }
+            
+            // 2. End-of-day notification (23:00, 1 hour before end of day)
+            // Skip duplicate only if custom time is already 23:00
+            let isAlreadyAt2300 = hasCustomTime
+            && primaryHour == ScheduleConfig.endOfDayWarningHour
+            && primaryMinute == ScheduleConfig.endOfDayWarningMinute
+            if !isAlreadyAt2300 {
+                var eodComponents = calendar.dateComponents([.year, .month, .day], from: day)
+                eodComponents.hour = ScheduleConfig.endOfDayWarningHour
+                eodComponents.minute = ScheduleConfig.endOfDayWarningMinute
+                
+                if let eodFireDate = calendar.date(from: eodComponents), eodFireDate > now {
+                    let eodContent = makeNotificationContent(
+                        for: reminder,
+                        personName: personName,
+                        isEndOfDayWarning: true
+                    )
+                    let eodTrigger = UNCalendarNotificationTrigger(dateMatching: eodComponents, repeats: false)
+                    let eodRequest = UNNotificationRequest(
+                        identifier: "\(reminder.id.uuidString)-\(dateKey)-eod",
+                        content: eodContent,
+                        trigger: eodTrigger
+                    )
+                    try await center.add(eodRequest)
+                }
+            }
         }
-        advanceContent.sound = .default
-        advanceContent.userInfo = ["reminderId": reminder.id.uuidString, "type": "advance_1h"]
+    }
+    
+    // MARK: - Helpers
+    private func upcomingUncompletedDays(
+        for reminder: Reminder,
+        calendar: Calendar,
+        todayStart: Date,
+        now: Date,
+        primaryHour: Int,
+        primaryMinute: Int
+    ) -> [Date] {
+        if reminder.repeatWeekdays.isEmpty {
+            let targetDay = calendar.startOfDay(for: reminder.dateRequired)
+            guard targetDay >= todayStart, !reminder.isCompleted(on: targetDay) else {
+                return []
+            }
+            return [targetDay]
+        }
         
+        // Recurring reminder: find up to 3 upcoming uncompleted active occurrences within the next 30 days
+        let earliestActiveDay = min(
+            calendar.startOfDay(for: reminder.dateRequired),
+            calendar.startOfDay(for: reminder.createdAt)
+        )
+        
+        var scheduledDays: [Date] = []
+        
+        for dayOffset in 0..<ScheduleConfig.maxLookaheadDays {
+            guard let candidateDay = calendar.date(byAdding: .day, value: dayOffset, to: todayStart) else {
+                continue
+            }
+            
+            let weekday = calendar.component(.weekday, from: candidateDay)
+            let isSameRequiredDate = calendar.isDate(reminder.dateRequired, inSameDayAs: candidateDay)
+            let matchesSchedule = isSameRequiredDate || (candidateDay >= earliestActiveDay && reminder.repeatWeekdays.contains(weekday))
+            
+            guard matchesSchedule else { continue }
+            
+            // Do NOT schedule notifications for days already marked completed
+            guard !reminder.isCompleted(on: candidateDay) else { continue }
+            
+            // Verify at least one notification slot for candidateDay is still in the future
+            var primaryComp = calendar.dateComponents([.year, .month, .day], from: candidateDay)
+            primaryComp.hour = primaryHour
+            primaryComp.minute = primaryMinute
+            let primaryFuture = calendar.date(from: primaryComp).map { $0 > now } ?? false
+            
+            var eodComp = calendar.dateComponents([.year, .month, .day], from: candidateDay)
+            eodComp.hour = ScheduleConfig.endOfDayWarningHour
+            eodComp.minute = ScheduleConfig.endOfDayWarningMinute
+            let eodFuture = calendar.date(from: eodComp).map { $0 > now } ?? false
+            
+            if primaryFuture || eodFuture {
+                scheduledDays.append(candidateDay)
+                if scheduledDays.count >= ScheduleConfig.maxOccurrencesToSchedule {
+                    break
+                }
+            }
+        }
+        
+        return scheduledDays
+    }
+    
+    private func makeNotificationContent(
+        for reminder: Reminder,
+        personName: String?,
+        isEndOfDayWarning: Bool
+    ) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = reminder.title
-        if let name = personName, !name.isEmpty {
-            content.body = "Time's up for \(name)'s task: \"\(reminder.title)\""
-        } else {
-            content.body = "Didn’t forget anything, did you?"
-        }
         content.sound = .default
-        content.userInfo = ["reminderId": reminder.id.uuidString, "type": "deadline"]
         
-        if reminder.repeatWeekdays.isEmpty {
-            var components = calendar.dateComponents([.year, .month, .day], from: reminder.dateRequired)
-            components.hour = hour
-            components.minute = minute
-
-            if let targetDeadlineDate = calendar.date(from: components), targetDeadlineDate > Date() {
-                if let advanceDate = calendar.date(byAdding: .hour, value: -1, to: targetDeadlineDate), advanceDate > Date() {
-                    let advanceComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: advanceDate)
-                    let advanceTrigger = UNCalendarNotificationTrigger(dateMatching: advanceComponents, repeats: false)
-                    let advanceRequest = UNNotificationRequest(
-                        identifier: "\(reminder.id.uuidString)-advance-1h",
-                        content: advanceContent,
-                        trigger: advanceTrigger
-                    )
-                    try await center.add(advanceRequest)
-                }
-                
-                let deadlineTrigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-                let deadlineRequest = UNNotificationRequest(
-                    identifier: "\(reminder.id.uuidString)-deadline",
-                    content: content,
-                    trigger: deadlineTrigger
-                )
-                try await center.add(deadlineRequest)
+        if isEndOfDayWarning {
+            if let name = personName, !name.isEmpty {
+                content.body = "Hurry up! Only 1 hour left today for \(name)'s task."
+            } else {
+                content.body = "Hurry up! Only 1 hour left to complete this reminder today."
             }
+            content.userInfo = ["reminderId": reminder.id.uuidString, "type": "eod_1h"]
         } else {
-            for weekday in reminder.repeatWeekdays {
-                let rawTimeNotice = calendar.date(byAdding: .hour, value: -1, to: timeSource) ?? timeSource
-                let advanceHour = calendar.component(.hour, from: rawTimeNotice)
-                let advanceMinute = calendar.component(.minute, from: rawTimeNotice)
-                let advanceWeekday = (hour == 0 && advanceHour == 23) ? ((weekday == 1) ? 7 : (weekday - 1)) : weekday
-                
-                var advanceComponents = DateComponents()
-                advanceComponents.weekday = advanceWeekday
-                advanceComponents.hour = advanceHour
-                advanceComponents.minute = advanceMinute
-                
-                let advanceTrigger = UNCalendarNotificationTrigger(dateMatching: advanceComponents, repeats: true)
-                let advanceRequest = UNNotificationRequest(
-                    identifier: "\(reminder.id.uuidString)-weekday-\(weekday)-advance-1h",
-                    content: advanceContent,
-                    trigger: advanceTrigger
-                )
-                try await center.add(advanceRequest)
-                
-                var components = DateComponents()
-                components.weekday = weekday
-                components.hour = hour
-                components.minute = minute
-                
-                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-                let request = UNNotificationRequest(
-                    identifier: "\(reminder.id.uuidString)-weekday-\(weekday)-deadline",
-                    content: content,
-                    trigger: trigger
-                )
-                try await center.add(request)
+            if let name = personName, !name.isEmpty {
+                content.body = "Reminder for \(name)"
+            } else {
+                content.body = "Time to complete your scheduled reminder."
             }
+            content.userInfo = ["reminderId": reminder.id.uuidString, "type": "primary"]
         }
+        
+        return content
     }
     
     public func cancelNotifications(for reminderId: UUID) async {

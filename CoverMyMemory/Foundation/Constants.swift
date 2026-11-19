@@ -93,4 +93,10 @@ public enum Constants {
     public enum Storage {
         public static let photosDirectoryName: String = "Photos"
     }
+    
+    // MARK: - UserDefaults Keys
+    public enum UserDefaultsKeys {
+        public static let notificationsEnabled: String = "notifications_enabled"
+        public static let selectedAppearance: String = "selected_appearance"
+    }
 }
