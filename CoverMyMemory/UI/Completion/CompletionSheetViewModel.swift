@@ -132,6 +132,8 @@ public final class CompletionSheetViewModel {
         
         if reminder.repeatWeekdays.isEmpty {
             await notificationScheduler.cancelNotifications(for: reminder.id)
+        } else {
+            try? await notificationScheduler.scheduleNotifications(for: reminder, personName: person?.name)
         }
     }
 }
