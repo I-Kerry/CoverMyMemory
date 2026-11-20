@@ -200,18 +200,10 @@ public final class HomeViewModel: ObservableObject {
             filtered = rawReminders.filter { !$0.isCompleted(on: selectedDate) }
         }
         
-        let sorted = filtered.sorted { (lhs, rhs) -> Bool in
+        let sorted = filtered.sorted { [selectedDate] (lhs, rhs) -> Bool in
             switch currentSort {
             case .byTime:
-                if let lhsTime = lhs.timeOptional, let rhsTime = rhs.timeOptional {
-                    return lhsTime < rhsTime
-                } else if lhs.timeOptional != nil {
-                    return true
-                } else if rhs.timeOptional != nil {
-                    return false
-                } else {
-                    return lhs.createdAt < rhs.createdAt
-                }
+                return compareByTime(lhs, rhs)
                 
             case .completedFirst:
                 let lhsCompleted = lhs.isCompleted(on: selectedDate)
@@ -258,9 +250,21 @@ public final class HomeViewModel: ObservableObject {
     }
     
     private func compareByTime(_ lhs: Reminder, _ rhs: Reminder) -> Bool {
-        if let lhsTime = lhs.timeOptional, let rhsTime = rhs.timeOptional {
-            return lhsTime < rhsTime
+        switch (lhs.timeOptional, rhs.timeOptional) {
+        case let (lhsTime?, rhsTime?):
+            let calendar = Calendar.current
+            let lhsMinutes = calendar.component(.hour, from: lhsTime) * 60 + calendar.component(.minute, from: lhsTime)
+            let rhsMinutes = calendar.component(.hour, from: rhsTime) * 60 + calendar.component(.minute, from: rhsTime)
+            if lhsMinutes != rhsMinutes {
+                return lhsMinutes < rhsMinutes
+            }
+            return lhs.createdAt < rhs.createdAt
+        case (.some, .none):
+            return true
+        case (.none, .some):
+            return false
+        case (.none, .none):
+            return lhs.createdAt < rhs.createdAt
         }
-        return lhs.timeOptional != nil
     }
 }
