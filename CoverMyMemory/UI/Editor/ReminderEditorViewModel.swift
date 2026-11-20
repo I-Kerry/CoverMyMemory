@@ -14,6 +14,7 @@ public final class ReminderEditorViewModel: ObservableObject {
     // MARK: - Dependencies
     private let reminderRepository: ReminderRepository
     private let personRepository: PersonRepository
+    private let photoStorage: PhotoStorage
     private let notificationScheduler: NotificationScheduler
     public let reminderId: UUID?
     
@@ -42,6 +43,7 @@ public final class ReminderEditorViewModel: ObservableObject {
         reminderId: UUID? = nil,
         reminderRepository: ReminderRepository? = nil,
         personRepository: PersonRepository? = nil,
+        photoStorage: PhotoStorage? = nil,
         notificationScheduler: NotificationScheduler? = nil,
         initialDate: Date = Date()
     ) {
@@ -50,6 +52,7 @@ public final class ReminderEditorViewModel: ObservableObject {
         
         self.reminderRepository = reminderRepository ?? SwiftDataReminderRepository()
         self.personRepository = personRepository ?? SwiftDataPersonRepository()
+        self.photoStorage = photoStorage ?? FilePhotoStorage()
         self.notificationScheduler = notificationScheduler ?? UserNotificationsScheduler()
         
         self.date = initialDate
@@ -187,6 +190,9 @@ public final class ReminderEditorViewModel: ObservableObject {
         guard let id = reminderId else { return }
         await notificationScheduler.cancelNotifications(for: id)
         guard let reminder = try await reminderRepository.fetch(by: id) else { return }
+        if let fileName = reminder.photoFileName {
+            try? await photoStorage.deletePhoto(fileName: fileName)
+        }
         try await reminderRepository.delete(reminder)
     }
 }
