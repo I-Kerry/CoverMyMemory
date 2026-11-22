@@ -17,6 +17,7 @@ public final class Reminder {
     public var timeOptional: Date?
     public var deadlineEnabled: Bool = true
     public var repeatWeekdays: [Int] = []
+    public var scheduledDateKeys: [String] = []
     public var isCompleted: Bool = false
     public var completedDates: [String] = []
     public var createdAt: Date = Date()
@@ -37,7 +38,8 @@ public final class Reminder {
         completedDates: [String] = [],
         completedAt: Date? = nil,
         photoFileName: String? = nil,
-        photoThumbData: Data? = nil
+        photoThumbData: Data? = nil,
+        scheduledDateKeys: [String] = []
     ) {
         self.id = id
         self.title = title
@@ -52,6 +54,12 @@ public final class Reminder {
         self.completedAt = completedAt
         self.photoFileName = photoFileName
         self.photoThumbData = photoThumbData
+        
+        if scheduledDateKeys.isEmpty {
+            self.scheduledDateKeys = [Reminder.dateFormatter.string(from: dateRequired)]
+        } else {
+            self.scheduledDateKeys = Array(Set(scheduledDateKeys)).sorted()
+        }
         
         if isCompleted {
             let key = Reminder.dateFormatter.string(from: completedAt ?? dateRequired)
@@ -104,5 +112,51 @@ public final class Reminder {
             completedAt = now
             return true
         }
+    }
+    
+    public func resolvedScheduledDates(calendar: Calendar = .current) -> [Date] {
+        if scheduledDateKeys.isEmpty {
+            return [calendar.startOfDay(for: dateRequired)]
+        }
+        let parsed = scheduledDateKeys.compactMap { key -> Date? in
+            guard let parsedDate = Reminder.dateFormatter.date(from: key) else { return nil }
+            return calendar.startOfDay(for: parsedDate)
+        }
+        if parsed.isEmpty {
+            return [calendar.startOfDay(for: dateRequired)]
+        }
+        return Array(Set(parsed)).sorted()
+    }
+    
+    public func isScheduled(on date: Date, calendar: Calendar = .current) -> Bool {
+        let dateKey = Reminder.dateFormatter.string(from: date)
+        if completedDates.contains(dateKey) {
+            return true
+        }
+        
+        let targetDay = calendar.startOfDay(for: date)
+        let explicitDays = resolvedScheduledDates(calendar: calendar)
+        let matchesExplicitDate = explicitDays.contains { calendar.isDate($0, inSameDayAs: targetDay) }
+        
+        if repeatWeekdays.isEmpty {
+            return matchesExplicitDate
+        } else {
+            let earliestStartDay = explicitDays.first ?? calendar.startOfDay(for: dateRequired)
+            let weekday = calendar.component(.weekday, from: targetDay)
+            let repeatsOnWeekday = repeatWeekdays.contains(weekday)
+            return matchesExplicitDate || (targetDay >= earliestStartDay && repeatsOnWeekday)
+        }
+    }
+    
+    public var isSingleOccurrence: Bool {
+        repeatWeekdays.isEmpty && resolvedScheduledDates().count <= 1
+    }
+    
+    public var formattedScheduleSummary: String {
+        let dates = resolvedScheduledDates()
+        if dates.count > 1, let first = dates.first {
+            return "\(first.formatted(date: .abbreviated, time: .omitted)) (+\(dates.count - 1))"
+        }
+        return (dates.first ?? dateRequired).formatted(date: .abbreviated, time: .omitted)
     }
 }

@@ -35,7 +35,7 @@ public struct ReminderEditorView: View {
                 titleSection
                 
                 ReminderScheduleSection(
-                    date: $viewModel.date,
+                    selectedDateComponents: $viewModel.selectedDateComponents,
                     hasTime: $viewModel.hasTime,
                     time: $viewModel.time
                 )

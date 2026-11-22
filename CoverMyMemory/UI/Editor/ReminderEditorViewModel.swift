@@ -24,6 +24,15 @@ public final class ReminderEditorViewModel: ObservableObject {
     }
     
     @Published public var date: Date
+    @Published public var selectedDateComponents: Set<DateComponents> {
+        didSet {
+            if let earliest = sortedSelectedDates.first,
+               !Calendar.current.isDate(earliest, inSameDayAs: date) {
+                date = earliest
+            }
+            validate()
+        }
+    }
     @Published public var hasTime = false
     @Published public var time: Date
     @Published public var deadlineEnabled = true
@@ -36,6 +45,19 @@ public final class ReminderEditorViewModel: ObservableObject {
     @Published public private(set) var isEditMode = false
     @Published public private(set) var isLoading = false
     @Published public private(set) var errorMessage: String? = nil
+    
+    public var sortedSelectedDates: [Date] {
+        let calendar = Calendar.current
+        let dates = selectedDateComponents.compactMap { components -> Date? in
+            guard let rawDate = calendar.date(from: components) else { return nil }
+            return calendar.startOfDay(for: rawDate)
+        }
+        return Array(Set(dates)).sorted()
+    }
+    
+    private static func dateComponents(from date: Date, calendar: Calendar = .current) -> DateComponents {
+        calendar.dateComponents([.calendar, .era, .year, .month, .day], from: date)
+    }
     
     // MARK: - Initialization
     public init(
@@ -56,6 +78,7 @@ public final class ReminderEditorViewModel: ObservableObject {
         
         self.date = initialDate
         self.time = initialDate
+        self.selectedDateComponents = [Self.dateComponents(from: initialDate)]
     }
     
     // MARK: - Lifecycle & Data Loading
@@ -70,7 +93,9 @@ public final class ReminderEditorViewModel: ObservableObject {
             if let id = reminderId {
                 if let reminder = try await reminderRepository.fetch(by: id) {
                     self.title = reminder.title
-                    self.date = reminder.dateRequired
+                    let resolvedDates = reminder.resolvedScheduledDates()
+                    self.date = resolvedDates.first ?? reminder.dateRequired
+                    self.selectedDateComponents = Set(resolvedDates.map { Self.dateComponents(from: $0) })
                     self.deadlineEnabled = reminder.deadlineEnabled
                     self.repeatWeekdays = reminder.repeatWeekdays
                     
@@ -100,7 +125,7 @@ public final class ReminderEditorViewModel: ObservableObject {
     // MARK: - Validation
     public func validate() {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        isSaveEnabled = !trimmed.isEmpty
+        isSaveEnabled = !trimmed.isEmpty && !selectedDateComponents.isEmpty
     }
     
     // MARK: - Weekdays Recurrence
@@ -156,6 +181,12 @@ public final class ReminderEditorViewModel: ObservableObject {
             throw NSError(domain: "ReminderEditor", code: 400, userInfo: [NSLocalizedDescriptionKey: "Reminder title cannot be empty."])
         }
         
+        let sortedDates = sortedSelectedDates
+        guard let primaryDate = sortedDates.first else {
+            throw NSError(domain: "ReminderEditor", code: 400, userInfo: [NSLocalizedDescriptionKey: "Please select at least one date."])
+        }
+        let dateKeys = sortedDates.map { Reminder.dateFormatter.string(from: $0) }
+        
         let optionalTime: Date? = hasTime ? time : nil
         
         if let id = reminderId {
@@ -164,7 +195,8 @@ public final class ReminderEditorViewModel: ObservableObject {
             }
             
             reminder.title = trimmedTitle
-            reminder.dateRequired = date
+            reminder.dateRequired = primaryDate
+            reminder.scheduledDateKeys = dateKeys
             reminder.timeOptional = optionalTime
             reminder.deadlineEnabled = deadlineEnabled
             reminder.repeatWeekdays = repeatWeekdays
@@ -177,10 +209,11 @@ public final class ReminderEditorViewModel: ObservableObject {
             let newReminder = Reminder(
                 title: trimmedTitle,
                 personID: selectedPerson?.id,
-                dateRequired: date,
+                dateRequired: primaryDate,
                 timeOptional: optionalTime,
                 deadlineEnabled: deadlineEnabled,
-                repeatWeekdays: repeatWeekdays
+                repeatWeekdays: repeatWeekdays,
+                scheduledDateKeys: dateKeys
             )
             
             try await reminderRepository.save(newReminder)

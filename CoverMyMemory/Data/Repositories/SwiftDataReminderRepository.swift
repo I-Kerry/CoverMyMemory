@@ -20,32 +20,39 @@ public final class SwiftDataReminderRepository: ReminderRepository {
         self.init(modelContext: AppDatabase.shared.context)
     }
     
+//    public func fetchReminders(for date: Date) async throws -> [Reminder] {
+//        let calendar = Calendar.current
+//        let startOfDay = calendar.startOfDay(for: date)
+//        
+//        let weekday = calendar.component(.weekday, from: date)
+//        
+//        let descriptor = FetchDescriptor<Reminder>(sortBy: [SortDescriptor(\.timeOptional, order: .forward)])
+//        let all = try modelContext.fetch(descriptor)
+//        
+//        let dateKey = Reminder.dateFormatter.string(from: date)
+//        
+//        return all.filter { reminder in
+//            if reminder.completedDates.contains(dateKey) {
+//                return true
+//            }
+//            
+//            let isSameRequiredDate = calendar.isDate(reminder.dateRequired, inSameDayAs: date)
+//            
+//            if reminder.repeatWeekdays.isEmpty {
+//                return isSameRequiredDate
+//            } else {
+//                let startDay = calendar.startOfDay(for: reminder.dateRequired)
+//                let repeatsOnWeekday = reminder.repeatWeekdays.contains(weekday)
+//                return isSameRequiredDate || (startOfDay >= startDay && repeatsOnWeekday)
+//            }
+//        }
+//    }
     public func fetchReminders(for date: Date) async throws -> [Reminder] {
         let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        
-        let weekday = calendar.component(.weekday, from: date)
-        
         let descriptor = FetchDescriptor<Reminder>(sortBy: [SortDescriptor(\.timeOptional, order: .forward)])
         let all = try modelContext.fetch(descriptor)
         
-        let dateKey = Reminder.dateFormatter.string(from: date)
-        
-        return all.filter { reminder in
-            if reminder.completedDates.contains(dateKey) {
-                return true
-            }
-            
-            let isSameRequiredDate = calendar.isDate(reminder.dateRequired, inSameDayAs: date)
-            
-            if reminder.repeatWeekdays.isEmpty {
-                return isSameRequiredDate
-            } else {
-                let startDay = calendar.startOfDay(for: reminder.dateRequired)
-                let repeatsOnWeekday = reminder.repeatWeekdays.contains(weekday)
-                return isSameRequiredDate || (startOfDay >= startDay && repeatsOnWeekday)
-            }
-        }
+        return all.filter { $0.isScheduled(on: date, calendar: calendar) }
     }
     
     public func fetchAll() async throws -> [Reminder] {

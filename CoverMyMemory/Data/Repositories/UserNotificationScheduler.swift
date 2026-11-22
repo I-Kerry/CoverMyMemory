@@ -20,6 +20,7 @@ public final class UserNotificationsScheduler: NotificationScheduler {
         static let endOfDayWarningMinute = 0
         static let maxLookaheadDays = 30
         static let maxOccurrencesToSchedule = 3
+        static let maxExplicitDatesToSchedule = 20
     }
     
     private let center: UNUserNotificationCenter
@@ -27,8 +28,8 @@ public final class UserNotificationsScheduler: NotificationScheduler {
     
     public init(
         center: UNUserNotificationCenter = .current(),
-        preferencesStorage: UserPreferencesStorage? = nil)
-    {
+        preferencesStorage: UserPreferencesStorage? = nil
+    ) {
         self.center = center
         self.preferencesStorage = preferencesStorage ?? UserDefaultsPreferencesStorage()
     }
@@ -54,9 +55,6 @@ public final class UserNotificationsScheduler: NotificationScheduler {
         let todayStart = calendar.startOfDay(for: now)
         
         // Determine primary time: custom time if set, otherwise 12:00 noon
-//        let hasCustomTime = reminder.timeOptional != nil
-//        let primaryHour = hasCustomTime ? calendar.component(.hour, from: reminder.timeOptional!) : ScheduleConfig.defaultPrimaryHour
-//        let primaryMinute = hasCustomTime ? calendar.component(.minute, from: reminder.timeOptional!) : ScheduleConfig.defaultPrimaryMinute
         let hasCustomTime: Bool
         let primaryHour: Int
         let primaryMinute: Int
@@ -140,24 +138,26 @@ public final class UserNotificationsScheduler: NotificationScheduler {
         primaryHour: Int,
         primaryMinute: Int
     ) -> [Date] {
+        let explicitDays = reminder.resolvedScheduledDates(calendar: calendar)
+        
         if reminder.repeatWeekdays.isEmpty {
-            let targetDay = calendar.startOfDay(for: reminder.dateRequired)
-            guard targetDay >= todayStart, !reminder.isCompleted(on: targetDay) else {
-                return []
-            }
-            return [targetDay]
+            let upcomingExplicit = explicitDays
+                .filter { $0 >= todayStart && !reminder.isCompleted(on: $0) }
+                .filter { candidateDay in
+                    hasFutureNotificationSlot(
+                        on: candidateDay,
+                        calendar: calendar,
+                        now: now,
+                        primaryHour: primaryHour,
+                        primaryMinute: primaryMinute
+                    )
+                }
+            return Array(upcomingExplicit.prefix(ScheduleConfig.maxExplicitDatesToSchedule))
         }
         
-        // Recurring reminder: find up to 3 upcoming uncompleted active occurrences within the next 30 days
-        let startDay = calendar.startOfDay(for: reminder.dateRequired)
+        // Recurring reminder: find up to 3 upcoming uncompleted active occurrences starting from earliest scheduled date
+        let earliestStartDay = explicitDays.first ?? calendar.startOfDay(for: reminder.dateRequired)
         var scheduledDays: [Date] = []
-        
-//        let earliestActiveDay = min(
-//            calendar.startOfDay(for: reminder.dateRequired),
-//            calendar.startOfDay(for: reminder.createdAt)
-//        )
-//        
-//        var scheduledDays: [Date] = []
         
         for dayOffset in 0..<ScheduleConfig.maxLookaheadDays {
             guard let candidateDay = calendar.date(byAdding: .day, value: dayOffset, to: todayStart) else {
@@ -165,26 +165,21 @@ public final class UserNotificationsScheduler: NotificationScheduler {
             }
             
             let weekday = calendar.component(.weekday, from: candidateDay)
-            let isSameRequiredDate = calendar.isDate(reminder.dateRequired, inSameDayAs: candidateDay)
-            let matchesSchedule = isSameRequiredDate || (candidateDay >= startDay && reminder.repeatWeekdays.contains(weekday))
+            let isExplicitDate = explicitDays.contains { calendar.isDate($0, inSameDayAs: candidateDay) }
+            let matchesSchedule = isExplicitDate || (candidateDay >= earliestStartDay && reminder.repeatWeekdays.contains(weekday))
             
             guard matchesSchedule else { continue }
             
             // Do NOT schedule notifications for days already marked completed
             guard !reminder.isCompleted(on: candidateDay) else { continue }
             
-            // Verify at least one notification slot for candidateDay is still in the future
-            var primaryComp = calendar.dateComponents([.year, .month, .day], from: candidateDay)
-            primaryComp.hour = primaryHour
-            primaryComp.minute = primaryMinute
-            let primaryFuture = calendar.date(from: primaryComp).map { $0 > now } ?? false
-            
-            var eodComp = calendar.dateComponents([.year, .month, .day], from: candidateDay)
-            eodComp.hour = ScheduleConfig.endOfDayWarningHour
-            eodComp.minute = ScheduleConfig.endOfDayWarningMinute
-            let eodFuture = calendar.date(from: eodComp).map { $0 > now } ?? false
-            
-            if primaryFuture || eodFuture {
+            if hasFutureNotificationSlot(
+                on: candidateDay,
+                calendar: calendar,
+                now: now,
+                primaryHour: primaryHour,
+                primaryMinute: primaryMinute
+            ) {
                 scheduledDays.append(candidateDay)
                 if scheduledDays.count >= ScheduleConfig.maxOccurrencesToSchedule {
                     break
@@ -193,6 +188,26 @@ public final class UserNotificationsScheduler: NotificationScheduler {
         }
         
         return scheduledDays
+    }
+    
+    private func hasFutureNotificationSlot(
+        on day: Date,
+        calendar: Calendar,
+        now: Date,
+        primaryHour: Int,
+        primaryMinute: Int
+    ) -> Bool {
+        var primaryComp = calendar.dateComponents([.year, .month, .day], from: day)
+        primaryComp.hour = primaryHour
+        primaryComp.minute = primaryMinute
+        let primaryFuture = calendar.date(from: primaryComp).map { $0 > now } ?? false
+        
+        var eodComp = calendar.dateComponents([.year, .month, .day], from: day)
+        eodComp.hour = ScheduleConfig.endOfDayWarningHour
+        eodComp.minute = ScheduleConfig.endOfDayWarningMinute
+        let eodFuture = calendar.date(from: eodComp).map { $0 > now } ?? false
+        
+        return primaryFuture || eodFuture
     }
     
     private func makeNotificationContent(
@@ -206,9 +221,9 @@ public final class UserNotificationsScheduler: NotificationScheduler {
         
         if isEndOfDayWarning {
             if let name = personName, !name.isEmpty {
-                content.body = "Hurry up! Only 1 hour left today for \(name)'s task."
+                content.body = "Hurry up! Just 1 hour left today for \(name)'s task."
             } else {
-                content.body = "Hurry up! Only 1 hour left to complete this reminder today."
+                content.body = "Hurry up! Just 1 hour left to complete this reminder today."
             }
             content.userInfo = ["reminderId": reminder.id.uuidString, "type": "eod_1h"]
         } else {

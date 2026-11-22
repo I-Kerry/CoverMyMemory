@@ -8,18 +8,18 @@
 import SwiftUI
 
 public struct ReminderScheduleSection: View {
-    @Binding public var date: Date
+    @Binding public var selectedDateComponents: Set<DateComponents>
     @Binding public var hasTime: Bool
     @Binding public var time: Date
     
     @State private var isDatePickerExpanded = false
     
     public init(
-        date: Binding<Date>,
+        selectedDateComponents: Binding<Set<DateComponents>>,
         hasTime: Binding<Bool>,
         time: Binding<Date>
     ) {
-        self._date = date
+        self._selectedDateComponents = selectedDateComponents
         self._hasTime = hasTime
         self._time = time
     }
@@ -29,14 +29,19 @@ public struct ReminderScheduleSection: View {
             dateRow
             
             if isDatePickerExpanded {
-                DatePicker(
-                    "Date",
-                    selection: $date,
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.graphical)
-                .labelsHidden()
-                .transition(.opacity)
+                MultiDatePicker("Dates", selection: $selectedDateComponents)
+                    .labelsHidden()
+                    .transition(.opacity)
+                
+                if sortedDates.isEmpty {
+                    Text("Please select at least one date.")
+                        .font(.appCaption)
+                        .foregroundColor(.appDestructive)
+                } else if sortedDates.count > 1 {
+                    Text("Selected: \(selectedDatesCaption)")
+                        .font(.appCaption)
+                        .foregroundColor(.appTextSecondary)
+                }
             }
             
             Toggle("Time", isOn: $hasTime.animation(.easeInOut))
@@ -65,15 +70,15 @@ public struct ReminderScheduleSection: View {
             }
         } label: {
             HStack {
-                Text("Date")
+                Text(sortedDates.count > 1 ? "Dates" : "Date")
                     .font(.appSubheadline)
                     .foregroundColor(.appTextPrimary)
                 
                 Spacer()
                 
-                Text(date.formatted(date: .abbreviated, time: .omitted))
+                Text(dateSummaryText)
                     .font(.appSubheadline)
-                    .foregroundColor(isDatePickerExpanded ? .appAccent : .appTextSecondary)
+                    .foregroundColor(summaryForegroundColor)
                     .padding(.horizontal, Constants.Spacing.xSmall)
                     .padding(.vertical, Constants.Spacing.xxSmall)
                     .background(
@@ -85,12 +90,45 @@ public struct ReminderScheduleSection: View {
         }
         .buttonStyle(.plain)
     }
+    
+    private var sortedDates: [Date] {
+        let calendar = Calendar.current
+        let dates = selectedDateComponents.compactMap { components -> Date? in
+            guard let rawDate = calendar.date(from: components) else { return nil }
+            return calendar.startOfDay(for: rawDate)
+        }
+        return Array(Set(dates)).sorted()
+    }
+    
+    private var selectedDatesCaption: String {
+        sortedDates
+            .map { $0.formatted(date: .abbreviated, time: .omitted) }
+            .joined(separator: ", ")
+    }
+    
+    private var dateSummaryText: String {
+        guard let first = sortedDates.first else {
+            return "Select date"
+        }
+        let firstFormatted = first.formatted(date: .abbreviated, time: .omitted)
+        if sortedDates.count > 1 {
+            return "\(firstFormatted) (+\(sortedDates.count - 1))"
+        }
+        return firstFormatted
+    }
+    
+    private var summaryForegroundColor: Color {
+        if sortedDates.isEmpty {
+            return .appDestructive
+        }
+        return isDatePickerExpanded ? .appAccent : .appTextSecondary
+    }
 }
 
 #Preview {
-    @Previewable @State var date: Date = Date()
+    @Previewable @State var date: Set<DateComponents> = []
     @Previewable @State var hasTime: Bool = true
     @Previewable @State var time: Date = Date()
     
-    ReminderScheduleSection(date: $date, hasTime: $hasTime, time: $time)
+    ReminderScheduleSection(selectedDateComponents: $date, hasTime: $hasTime, time: $time)
 }
