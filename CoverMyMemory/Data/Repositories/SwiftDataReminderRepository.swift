@@ -23,7 +23,7 @@ public final class SwiftDataReminderRepository: ReminderRepository {
     public func fetchReminders(for date: Date) async throws -> [Reminder] {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        guard calendar.date(byAdding: .day, value: 1, to: startOfDay) != nil else {
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
             return []
         }
         let weekday = calendar.component(.weekday, from: date)
@@ -32,7 +32,6 @@ public final class SwiftDataReminderRepository: ReminderRepository {
         let all = try modelContext.fetch(descriptor)
         
         let dateKey = Reminder.dateFormatter.string(from: date)
-        
         
         return all.filter { reminder in
             if reminder.completedDates.contains(dateKey) {
@@ -43,29 +42,13 @@ public final class SwiftDataReminderRepository: ReminderRepository {
             let isSameCreatedDate = calendar.isDate(reminder.createdAt, inSameDayAs: date)
             
             if reminder.repeatWeekdays.isEmpty {
-                return isSameRequiredDate || isSameCreatedDate
+                return isSameRequiredDate
             } else {
-                let earliestActiveDay = min(
-                    calendar.startOfDay(for: reminder.dateRequired),
-                    calendar.startOfDay(for: reminder.createdAt)
-                )
+                let startDay = calendar.startOfDay(for: reminder.dateRequired)
                 let repeatsOnWeekday = reminder.repeatWeekdays.contains(weekday)
-                let isAfterOrOnCreation = startOfDay >= earliestActiveDay
-                
-                return isSameRequiredDate || isSameCreatedDate || (isAfterOrOnCreation && repeatsOnWeekday)
+                return isSameRequiredDate || (startOfDay >= startDay && repeatsOnWeekday)
             }
         }
-//        return all.filter { reminder in
-//            let reminderStartOfDay = calendar.startOfDay(for: reminder.dateRequired)
-//            let isSameDay = reminder.dateRequired >= startOfDay && reminder.dateRequired < endOfDay
-//            
-//            if reminder.repeatWeekdays.isEmpty {
-//                return isSameDay
-//            } else {
-//                let repeatsOnWeekday = reminder.repeatWeekdays.contains(weekday)
-//                return isSameDay || (startOfDay >= reminderStartOfDay && repeatsOnWeekday)
-//            }
-//        }
     }
     
     public func fetchAll() async throws -> [Reminder] {

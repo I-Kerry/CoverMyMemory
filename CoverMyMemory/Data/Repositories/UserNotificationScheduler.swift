@@ -54,9 +54,22 @@ public final class UserNotificationsScheduler: NotificationScheduler {
         let todayStart = calendar.startOfDay(for: now)
         
         // Determine primary time: custom time if set, otherwise 12:00 noon
-        let hasCustomTime = reminder.timeOptional != nil
-        let primaryHour = hasCustomTime ? calendar.component(.hour, from: reminder.timeOptional!) : ScheduleConfig.defaultPrimaryHour
-        let primaryMinute = hasCustomTime ? calendar.component(.minute, from: reminder.timeOptional!) : ScheduleConfig.defaultPrimaryMinute
+//        let hasCustomTime = reminder.timeOptional != nil
+//        let primaryHour = hasCustomTime ? calendar.component(.hour, from: reminder.timeOptional!) : ScheduleConfig.defaultPrimaryHour
+//        let primaryMinute = hasCustomTime ? calendar.component(.minute, from: reminder.timeOptional!) : ScheduleConfig.defaultPrimaryMinute
+        let hasCustomTime: Bool
+        let primaryHour: Int
+        let primaryMinute: Int
+        
+        if let customTime = reminder.timeOptional {
+            hasCustomTime = true
+            primaryHour = calendar.component(.hour, from: customTime)
+            primaryMinute = calendar.component(.minute, from: customTime)
+        } else {
+            hasCustomTime = false
+            primaryHour = ScheduleConfig.defaultPrimaryHour
+            primaryMinute = ScheduleConfig.defaultPrimaryMinute
+        }
         
         let targetDays = upcomingUncompletedDays(
             for: reminder,
@@ -136,12 +149,15 @@ public final class UserNotificationsScheduler: NotificationScheduler {
         }
         
         // Recurring reminder: find up to 3 upcoming uncompleted active occurrences within the next 30 days
-        let earliestActiveDay = min(
-            calendar.startOfDay(for: reminder.dateRequired),
-            calendar.startOfDay(for: reminder.createdAt)
-        )
-        
+        let startDay = calendar.startOfDay(for: reminder.dateRequired)
         var scheduledDays: [Date] = []
+        
+//        let earliestActiveDay = min(
+//            calendar.startOfDay(for: reminder.dateRequired),
+//            calendar.startOfDay(for: reminder.createdAt)
+//        )
+//        
+//        var scheduledDays: [Date] = []
         
         for dayOffset in 0..<ScheduleConfig.maxLookaheadDays {
             guard let candidateDay = calendar.date(byAdding: .day, value: dayOffset, to: todayStart) else {
@@ -150,7 +166,7 @@ public final class UserNotificationsScheduler: NotificationScheduler {
             
             let weekday = calendar.component(.weekday, from: candidateDay)
             let isSameRequiredDate = calendar.isDate(reminder.dateRequired, inSameDayAs: candidateDay)
-            let matchesSchedule = isSameRequiredDate || (candidateDay >= earliestActiveDay && reminder.repeatWeekdays.contains(weekday))
+            let matchesSchedule = isSameRequiredDate || (candidateDay >= startDay && reminder.repeatWeekdays.contains(weekday))
             
             guard matchesSchedule else { continue }
             
