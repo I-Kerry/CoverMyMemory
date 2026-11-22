@@ -41,5 +41,7 @@ public enum AssetCatalog {
         public static let personCropCircle = "person.crop.circle"
         public static let photo = "photo"
         public static let trash = "trash"
+        public static let xmarkCircleFill = "xmark.circle.fill"
+        public static let chevronUpChevronDown = "chevron.up.chevron.down"
     }
 }

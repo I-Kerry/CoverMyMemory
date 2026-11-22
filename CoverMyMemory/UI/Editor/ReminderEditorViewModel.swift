@@ -38,7 +38,6 @@ public final class ReminderEditorViewModel: ObservableObject {
     @Published public private(set) var errorMessage: String? = nil
     
     // MARK: - Initialization
-    
     public init(
         reminderId: UUID? = nil,
         reminderRepository: ReminderRepository? = nil,
@@ -118,6 +117,10 @@ public final class ReminderEditorViewModel: ObservableObject {
         return repeatWeekdays.contains(day)
     }
     
+    public func clearWeekdays() {
+        repeatWeekdays.removeAll()
+    }
+    
     // MARK: - Person Management
     public func selectPerson(_ person: Person?) {
         self.selectedPerson = person
@@ -168,7 +171,7 @@ public final class ReminderEditorViewModel: ObservableObject {
             reminder.personID = selectedPerson?.id
             
             try await reminderRepository.update(reminder)
-            try await notificationScheduler.scheduleNotifications(for: reminder, personName: selectedPerson?.name)
+            try? await notificationScheduler.scheduleNotifications(for: reminder, personName: selectedPerson?.name)
             return reminder
         } else {
             let newReminder = Reminder(
@@ -181,7 +184,7 @@ public final class ReminderEditorViewModel: ObservableObject {
             )
             
             try await reminderRepository.save(newReminder)
-            try await notificationScheduler.scheduleNotifications(for: newReminder, personName: selectedPerson?.name)
+            try? await notificationScheduler.scheduleNotifications(for: newReminder, personName: selectedPerson?.name)
             return newReminder
         }
     }

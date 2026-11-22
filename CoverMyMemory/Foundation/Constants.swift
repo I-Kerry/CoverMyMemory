@@ -67,8 +67,6 @@ public enum Constants {
         public static let checkmarkSymbolPointSize: CGFloat = 28
         /// Empty circle symbol point size: 26pt
         public static let circleSymbolPointSize: CGFloat = 26
-        /// Weekday recurrence button minimum height: 34pt
-        public static let weekdayButtonHeight: CGFloat = 34
         /// Accessory icon point size (clear/cancel): 18pt
         public static let accessoryIconSize: CGFloat = 18
         /// List icon frame size in picker: 20pt

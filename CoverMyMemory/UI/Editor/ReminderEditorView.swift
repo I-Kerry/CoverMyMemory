@@ -18,11 +18,6 @@ public struct ReminderEditorView: View {
     
     public var onDismissOrSaved: (() -> Void)?
     
-    private let weekdays: [(id: Int, shortName: String)] = [
-        (1, "Sun"), (2, "Mon"), (3, "Tue"), (4, "Wed"),
-        (5, "Thu"), (6, "Fri"), (7, "Sat")
-    ]
-    
     public init(viewModel: ReminderEditorViewModel, onDismissOrSaved: (() -> Void)? = nil) {
         self.viewModel = viewModel
         self.onDismissOrSaved = onDismissOrSaved
@@ -31,150 +26,33 @@ public struct ReminderEditorView: View {
     public var body: some View {
         NavigationStack {
             Form {
-                // MARK: - Title Section
-                Section {
-                    TextField("What do you want to remember?", text: $viewModel.title)
-                        .font(.appCardTitle)
-                        .autocorrectionDisabled(false)
-                } header: {
-                    Text("Reminder Title")
-                }
+                ReminderPersonSection(
+                    selectedPerson: viewModel.selectedPerson,
+                    onSelectPerson: { showingPersonPicker = true },
+                    onClearPerson: { viewModel.selectPerson(nil) }
+                )
                 
-                // MARK: - Person Assignment Section
-                Section {
-                    Button(action: {
-                        showingPersonPicker = true
-                    }) {
-                        HStack(spacing: Constants.Spacing.medium) {
-                            if let person = viewModel.selectedPerson {
-                                personAvatar(for: person)
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(person.name)
-                                        .font(.appSubheadline)
-                                        .foregroundColor(.appTextPrimary)
-                                    Text("Assigned Contact")
-                                        .font(.appCaption)
-                                        .foregroundColor(.appTextSecondary)
-                                }
-                                
-                                Spacer()
-                                
-                                Button(action: {
-                                    viewModel.selectPerson(nil)
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.appTextSecondary)
-                                        .font(.system(size: Constants.Layout.accessoryIconSize))
-                                }
-                                .buttonStyle(.borderless)
-                            } else {
-                                Image(systemName: AssetCatalog.Icons.person)
-                                    .foregroundColor(.appAccent)
-                                    .frame(width: Constants.Layout.smallAvatarSize, height: Constants.Layout.smallAvatarSize)
-                                    .background(Color.appAccent.opacity(0.12))
-                                    .clipShape(Circle())
-                                
-                                Text("Assign a person (optional)")
-                                    .font(.appSubheadline)
-                                    .foregroundColor(.appTextSecondary)
-                                
-                                Spacer()
-                                
-                                Image(systemName: AssetCatalog.Icons.chevronRight)
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundColor(.appTextSecondary)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Person")
-                }
+                titleSection
                 
-                // MARK: - Date & Time Section
-                Section {
-                    DatePicker(
-                        "Date",
-                        selection: $viewModel.date,
-                        displayedComponents: .date
-                    )
-                    .font(.appSubheadline)
-                    
-                    Toggle("Time", isOn: $viewModel.hasTime.animation(.easeInOut))
-                        .font(.appSubheadline)
-                    
-                    if viewModel.hasTime {
-                        DatePicker(
-                            "Time",
-                            selection: $viewModel.time,
-                            displayedComponents: .hourAndMinute
-                        )
-                        .font(.appSubheadline)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                } header: {
-                    Text("Schedule")
-                }
+                ReminderScheduleSection(
+                    date: $viewModel.date,
+                    hasTime: $viewModel.hasTime,
+                    time: $viewModel.time
+                )
                 
-                // MARK: - Deadline Mode
-                Section {
-                    Toggle("Deadline Mode", isOn: $viewModel.deadlineEnabled.animation())
-                        .font(.appSubheadline)
-                } header: {
-                    Text("Urgency")
-                } footer: {
-                    Text("Enables countdown badge and high-contrast visual highlighting as the deadline approaches.")
-                        .font(.appCaption)
-                        .foregroundColor(.appTextSecondary)
-                }
+                urgencySection
                 
-                // MARK: - Recurrence (Repeat)
-                Section {
-                    VStack(alignment: .leading, spacing: Constants.Spacing.small) {
-                        HStack(spacing: Constants.Spacing.xxSmall) {
-                            ForEach(weekdays, id: \.id) { day in
-                                let isSelected = viewModel.isWeekdaySelected(day.id)
-                                Button(action: {
-                                    viewModel.toggleWeekday(day.id)
-                                }) {
-                                    Text(day.shortName)
-                                        .font(.caption2.weight(.semibold))
-                                        .frame(maxWidth: .infinity, minHeight: Constants.Layout.weekdayButtonHeight)
-                                        .background(isSelected ? Color.appAccent : Color(UIColor.tertiarySystemFill))
-                                        .foregroundColor(isSelected ? .white : .appTextPrimary)
-                                        .clipShape(RoundedRectangle(cornerRadius: Constants.Radius.small))
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                        }
-                        
-                        Text(recurrenceDescription)
-                            .font(.appCaption)
-                            .foregroundColor(.appTextSecondary)
-                    }
-                    .padding(.vertical, Constants.Spacing.xxSmall)
-                } header: {
-                    Text("Repeat")
-                }
+                WeekdayRecurrenceMenu(
+                    selectedWeekdays: viewModel.repeatWeekdays,
+                    onToggleWeekday: { viewModel.toggleWeekday($0) },
+                    onClearWeekdays: { viewModel.clearWeekdays() }
+                )
                 
-                // MARK: - Destructive Action (Edit Mode)
                 if viewModel.isEditMode {
-                    Section {
-                        Button(role: .destructive, action: {
-                            showingDeleteConfirmation = true
-                        }) {
-                            HStack {
-                                Spacer()
-                                Image(systemName: "trash")
-                                Text("Delete Reminder")
-                                    .fontWeight(.medium)
-                                Spacer()
-                            }
-                        }
-                    }
+                    deleteSection
                 }
             }
-            .navigationTitle(viewModel.isEditMode ? "Edit Reminder" : "New Reminder")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -184,7 +62,7 @@ public struct ReminderEditorView: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(primaryActionTitle) {
                         saveReminder()
                     }
                     .disabled(!viewModel.isSaveEnabled || isSaving)
@@ -217,38 +95,53 @@ public struct ReminderEditorView: View {
         }
     }
     
-    // MARK: - Private Helpers
-    @ViewBuilder
-    private func personAvatar(for person: Person) -> some View {
-        if let thumbData = person.photoThumbData, let uiImage = UIImage(data: thumbData) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: Constants.Layout.smallAvatarSize, height: Constants.Layout.smallAvatarSize)
-                .clipShape(Circle())
-        } else {
-            Circle()
-                .fill(Color.appAccent.opacity(0.15))
-                .frame(width: Constants.Layout.smallAvatarSize, height: Constants.Layout.smallAvatarSize)
-                .overlay(
-                    Image(systemName: AssetCatalog.Icons.person)
-                        .font(.system(size: Constants.Layout.avatarPlaceholderSize, weight: .semibold))
-                        .foregroundColor(.appAccent)
-                )
+    // MARK: - Subsections
+    private var titleSection: some View {
+        Section {
+            TextField("What do you want to remember?", text: $viewModel.title)
+                .font(.appCardTitle)
+                .autocorrectionDisabled(false)
+        } header: {
+            Text("Reminder Title")
         }
     }
     
-    private var recurrenceDescription: String {
-        if viewModel.repeatWeekdays.isEmpty {
-            return "Does not repeat"
+    private var urgencySection: some View {
+        Section {
+            Toggle("Deadline Mode", isOn: $viewModel.deadlineEnabled.animation())
+                .font(.appSubheadline)
+        } header: {
+            Text("Urgency")
+        } footer: {
+            Text("Enables countdown badge and high-contrast visual highlighting as the deadline approaches.")
+                .font(.appCaption)
+                .foregroundColor(.appTextSecondary)
         }
-        if viewModel.repeatWeekdays.count == 7 {
-            return "Repeats every day"
+    }
+    
+    private var deleteSection: some View {
+        Section {
+            Button(role: .destructive) {
+                showingDeleteConfirmation = true
+            } label: {
+                HStack {
+                    Spacer()
+                    Image(systemName: AssetCatalog.Icons.trash)
+                    Text("Delete Reminder")
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+            }
         }
-        let names = weekdays
-            .filter { viewModel.repeatWeekdays.contains($0.id) }
-            .map { $0.shortName }
-        return "Repeats on: " + names.joined(separator: ", ")
+    }
+    
+    // MARK: - Presentation & Actions
+    private var navigationTitle: String {
+        viewModel.isEditMode ? "Edit Reminder" : "Create Reminder"
+    }
+    
+    private var primaryActionTitle: String {
+        viewModel.isEditMode ? "Save" : "Create"
     }
     
     private func saveReminder() {
