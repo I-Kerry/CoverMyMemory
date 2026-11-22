@@ -23,9 +23,7 @@ public final class SwiftDataReminderRepository: ReminderRepository {
     public func fetchReminders(for date: Date) async throws -> [Reminder] {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
-            return []
-        }
+        
         let weekday = calendar.component(.weekday, from: date)
         
         let descriptor = FetchDescriptor<Reminder>(sortBy: [SortDescriptor(\.timeOptional, order: .forward)])
@@ -39,7 +37,6 @@ public final class SwiftDataReminderRepository: ReminderRepository {
             }
             
             let isSameRequiredDate = calendar.isDate(reminder.dateRequired, inSameDayAs: date)
-            let isSameCreatedDate = calendar.isDate(reminder.createdAt, inSameDayAs: date)
             
             if reminder.repeatWeekdays.isEmpty {
                 return isSameRequiredDate
