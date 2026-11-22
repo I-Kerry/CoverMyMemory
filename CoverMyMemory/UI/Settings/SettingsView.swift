@@ -28,6 +28,9 @@ public struct SettingsView: View {
     @AppStorage("selected_appearance") private var selectedAppearance = AppTheme.system.rawValue
     @State private var viewModel: SettingsViewModel
     @State private var showingResetConfirmation = false
+    @State private var showingResetSuccess = false
+    @State private var showingResetError = false
+    @State private var resetErrorMessage: String? = nil
     
     public var onResetData: (() -> Void)?
     
@@ -55,11 +58,21 @@ public struct SettingsView: View {
         }
         .confirmationDialog("Reset all data?", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
             Button("Reset data", role: .destructive) {
-                onResetData?()
+                performResetData()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This action cannot be undone.")
+        }
+        .alert("Data Reset", isPresented: $showingResetSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("All reminders, people, photos, and notifications have been deleted.")
+        }
+        .alert("Reset Failed", isPresented: $showingResetError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(resetErrorMessage ?? "An unexpected error occurred while resetting data.")
         }
     }
     
@@ -139,6 +152,7 @@ public struct SettingsView: View {
                 Text("Reset data")
                     .foregroundColor(.appDestructive)
             }
+            .disabled(viewModel.isResetting)
         } header: {
             Text("DATA")
         } footer: {
@@ -153,8 +167,22 @@ public struct SettingsView: View {
                 Text("Version")
                     .foregroundColor(.appTextPrimary)
                 Spacer()
-                Text("1.0.0")
+                Text(viewModel.appVersion)
                     .foregroundColor(.appTextSecondary)
+            }
+        }
+    }
+    
+    // MARK: - Actions
+    private func performResetData() {
+        Task {
+            do {
+                try await viewModel.resetAllData()
+                onResetData?()
+                showingResetSuccess = true
+            } catch {
+                resetErrorMessage = error.localizedDescription
+                showingResetError = true
             }
         }
     }
