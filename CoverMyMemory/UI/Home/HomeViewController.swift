@@ -211,6 +211,13 @@ public final class HomeViewController: UIViewController {
             }
             .store(in: &cancellables)
         
+        viewModel.$headerTitle
+            .receive(on: RunLoop.main)
+            .sink { [weak self] title in
+                self?.titleLabel.text = title
+            }
+            .store(in: &cancellables)
+        
         viewModel.$displayedItems
             .receive(on: RunLoop.main)
             .sink { [weak self] items in
@@ -335,10 +342,15 @@ extension HomeViewController: UITableViewDelegate {
     
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        guard let item = dataSource?.itemIdentifier(for: indexPath) else { return }
+        guard let item = dataSource?.itemIdentifier(for: indexPath), item.canBeCompleted else { return }
         
-        Task { [weak self] in
-            await self?.viewModel?.toggleCompletion(for: item.id)
+        if !item.isCompleted {
+            coordinator?.showCameraCompletion(reminderId: item.id)
+        } else {
+            Task { [weak self] in
+                guard let viewModel = self?.viewModel else { return }
+                await viewModel.toggleCompletion(for: item.id)
+            }
         }
     }
     

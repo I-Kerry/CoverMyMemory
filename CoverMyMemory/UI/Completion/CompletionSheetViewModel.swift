@@ -26,6 +26,7 @@ public final class CompletionSheetViewModel {
     public var isLoading = false
     public var isSaving = false
     public var errorMessage: String? = nil
+    private var didModifyPhoto = false
     
     // MARK: - Computed Properties
     public var hasCapturedPhoto: Bool {
@@ -97,10 +98,12 @@ public final class CompletionSheetViewModel {
     // MARK: - Photo Actions
     public func setPhotoData(_ data: Data) {
         self.capturedPhotoData = data
+        self.didModifyPhoto = true
     }
     
     public func removePhoto() {
         self.capturedPhotoData = nil
+        self.didModifyPhoto = true
     }
     
     // MARK: - Completion Actions
@@ -112,11 +115,22 @@ public final class CompletionSheetViewModel {
         isSaving = true
         defer { isSaving = false }
         
+        let previousFileName = reminder.photoFileName
+        
         if withPhoto, let data = capturedPhotoData {
-            let saved = try await photoStorage.savePhotoData(data)
-            reminder.photoFileName = saved.fileName
-            reminder.photoThumbData = saved.thumbnailData
+            if didModifyPhoto || previousFileName == nil {
+                let saved = try await photoStorage.savePhotoData(data)
+                reminder.photoFileName = saved.fileName
+                reminder.photoThumbData = saved.thumbnailData
+                
+                if let oldFile = previousFileName, oldFile != saved.fileName {
+                    try? await photoStorage.deletePhoto(fileName: oldFile)
+                }
+            }
         } else {
+            if let oldFile = previousFileName {
+                try? await photoStorage.deletePhoto(fileName: oldFile)
+            }
             reminder.photoFileName = nil
             reminder.photoThumbData = nil
         }
@@ -132,6 +146,8 @@ public final class CompletionSheetViewModel {
         
         if reminder.repeatWeekdays.isEmpty {
             await notificationScheduler.cancelNotifications(for: reminder.id)
+        } else {
+            try? await notificationScheduler.scheduleNotifications(for: reminder, personName: person?.name)
         }
     }
 }

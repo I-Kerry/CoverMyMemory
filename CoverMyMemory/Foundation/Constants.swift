@@ -67,8 +67,6 @@ public enum Constants {
         public static let checkmarkSymbolPointSize: CGFloat = 28
         /// Empty circle symbol point size: 26pt
         public static let circleSymbolPointSize: CGFloat = 26
-        /// Weekday recurrence button minimum height: 34pt
-        public static let weekdayButtonHeight: CGFloat = 34
         /// Accessory icon point size (clear/cancel): 18pt
         public static let accessoryIconSize: CGFloat = 18
         /// List icon frame size in picker: 20pt
@@ -92,5 +90,11 @@ public enum Constants {
     // MARK: - File Storage Paths
     public enum Storage {
         public static let photosDirectoryName: String = "Photos"
+    }
+    
+    // MARK: - UserDefaults Keys
+    public enum UserDefaultsKeys {
+        public static let notificationsEnabled: String = "notifications_enabled"
+        public static let selectedAppearance: String = "selected_appearance"
     }
 }

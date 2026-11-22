@@ -10,7 +10,9 @@ import SwiftData
 
 @main
 struct CoverMyMemoryApp: App {
-    @AppStorage("selected_appearance") private var selectedAppearance = "System"
+    @AppStorage(Constants.UserDefaultsKeys.selectedAppearance) private var selectedAppearance = "System"
+    @Environment(\.scenePhase) private var scenePhase
+    
     var body: some Scene {
         WindowGroup {
             MainTabBarWrapper()
@@ -18,6 +20,14 @@ struct CoverMyMemoryApp: App {
                 .task {
                     let scheduler = UserNotificationsScheduler()
                     _ = try? await scheduler.requestAuthorization()
+                    await NotificationSyncService().syncAllNotifications()
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        Task {
+                            await NotificationSyncService().syncAllNotifications()
+                        }
+                    }
                 }
         }
         .modelContainer(AppDatabase.shared.container)

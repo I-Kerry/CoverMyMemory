@@ -160,7 +160,7 @@ public struct PersonEditorView: View {
             
             Spacer()
             
-            Text(reminder.dateRequired.formatted(date: .abbreviated, time: .omitted))
+            Text(reminder.formattedScheduleSummary)
                 .font(.appCaption)
                 .foregroundColor(.appTextSecondary)
         }

@@ -9,7 +9,7 @@ import SwiftUI
 import UIKit
 
 struct MainTabBarWrapper: UIViewControllerRepresentable {
-    @AppStorage("selected_appearance") private var selectedAppearance = "System"
+    @AppStorage(Constants.UserDefaultsKeys.selectedAppearance) private var selectedAppearance = "System"
     
     public final class Coordinator {
         let appCoordinator = AppCoordinator()
