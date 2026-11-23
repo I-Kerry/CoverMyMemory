@@ -1,0 +1,234 @@
+//
+//  ReminderEditorViewModel.swift
+//  CoverMyMemory
+//
+//  Created by Kirill Maidanovich on 04.11.2026.
+//
+
+import Foundation
+import Combine
+
+@MainActor
+public final class ReminderEditorViewModel: ObservableObject {
+    
+    // MARK: - Dependencies
+    private let reminderRepository: ReminderRepository
+    private let personRepository: PersonRepository
+    private let photoStorage: PhotoStorage
+    private let notificationScheduler: NotificationScheduler
+    public let reminderId: UUID?
+    
+    // MARK: - Published State
+    @Published public var title: String = "" {
+        didSet { validate() }
+    }
+    
+    @Published public var date: Date
+    @Published public var selectedDateComponents: Set<DateComponents> {
+        didSet {
+            if let earliest = sortedSelectedDates.first,
+               !Calendar.current.isDate(earliest, inSameDayAs: date) {
+                date = earliest
+            }
+            validate()
+        }
+    }
+    @Published public var hasTime = false
+    @Published public var time: Date
+    @Published public var deadlineEnabled = true
+    @Published public var repeatWeekdays: [Int] = []
+    
+    @Published public var selectedPerson: Person? = nil
+    @Published public var availablePeople: [Person] = []
+    
+    @Published public private(set) var isSaveEnabled = false
+    @Published public private(set) var isEditMode = false
+    @Published public private(set) var isLoading = false
+    @Published public private(set) var errorMessage: String? = nil
+    
+    public var sortedSelectedDates: [Date] {
+        let calendar = Calendar.current
+        let dates = selectedDateComponents.compactMap { components -> Date? in
+            guard let rawDate = calendar.date(from: components) else { return nil }
+            return calendar.startOfDay(for: rawDate)
+        }
+        return Array(Set(dates)).sorted()
+    }
+    
+    private static func dateComponents(from date: Date, calendar: Calendar = .current) -> DateComponents {
+        calendar.dateComponents([.calendar, .era, .year, .month, .day], from: date)
+    }
+    
+    // MARK: - Initialization
+    public init(
+        reminderId: UUID? = nil,
+        reminderRepository: ReminderRepository? = nil,
+        personRepository: PersonRepository? = nil,
+        photoStorage: PhotoStorage? = nil,
+        notificationScheduler: NotificationScheduler? = nil,
+        initialDate: Date = Date()
+    ) {
+        self.reminderId = reminderId
+        self.isEditMode = (reminderId != nil)
+        
+        self.reminderRepository = reminderRepository ?? SwiftDataReminderRepository()
+        self.personRepository = personRepository ?? SwiftDataPersonRepository()
+        self.photoStorage = photoStorage ?? FilePhotoStorage()
+        self.notificationScheduler = notificationScheduler ?? UserNotificationsScheduler()
+        
+        self.date = initialDate
+        self.time = initialDate
+        self.selectedDateComponents = [Self.dateComponents(from: initialDate)]
+    }
+    
+    // MARK: - Lifecycle & Data Loading
+    public func loadData() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let people = try await personRepository.fetchAll()
+            self.availablePeople = people.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            
+            if let id = reminderId {
+                if let reminder = try await reminderRepository.fetch(by: id) {
+                    self.title = reminder.title
+                    let resolvedDates = reminder.resolvedScheduledDates()
+                    self.date = resolvedDates.first ?? reminder.dateRequired
+                    self.selectedDateComponents = Set(resolvedDates.map { Self.dateComponents(from: $0) })
+                    self.deadlineEnabled = reminder.deadlineEnabled
+                    self.repeatWeekdays = reminder.repeatWeekdays
+                    
+                    if let timeOptional = reminder.timeOptional {
+                        self.hasTime = true
+                        self.time = timeOptional
+                    } else {
+                        self.hasTime = false
+                        self.time = reminder.dateRequired
+                    }
+                    
+                    if let personID = reminder.personID {
+                        self.selectedPerson = self.availablePeople.first(where: { $0.id == personID })
+                    }
+                } else {
+                    self.errorMessage = "Reminder not found"
+                }
+            }
+        } catch {
+            self.errorMessage = "Failed to load reminder data: \(error.localizedDescription)"
+        }
+        
+        validate()
+        isLoading = false
+    }
+    
+    // MARK: - Validation
+    public func validate() {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        isSaveEnabled = !trimmed.isEmpty && !selectedDateComponents.isEmpty
+    }
+    
+    // MARK: - Weekdays Recurrence
+    public func toggleWeekday(_ day: Int) {
+        if let index = repeatWeekdays.firstIndex(of: day) {
+            repeatWeekdays.remove(at: index)
+        } else {
+            repeatWeekdays.append(day)
+            repeatWeekdays.sort()
+        }
+    }
+    
+    public func isWeekdaySelected(_ day: Int) -> Bool {
+        return repeatWeekdays.contains(day)
+    }
+    
+    public func clearWeekdays() {
+        repeatWeekdays.removeAll()
+    }
+    
+    // MARK: - Person Management
+    public func selectPerson(_ person: Person?) {
+        self.selectedPerson = person
+    }
+    
+    @discardableResult
+    public func createNewPerson(name: String, thumbnailData: Data? = nil, photoFileName: String? = nil) async throws -> Person {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw NSError(domain: "ReminderEditor", code: 400, userInfo: [NSLocalizedDescriptionKey: "Person name cannot be empty."])
+        }
+        
+        let newPerson = Person(
+            name: trimmed,
+            photoFileName: photoFileName,
+            photoThumbData: thumbnailData
+        )
+        
+        try await personRepository.save(newPerson)
+        
+        let people = try await personRepository.fetchAll()
+        self.availablePeople = people.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        self.selectedPerson = newPerson
+        
+        return newPerson
+    }
+    
+    // MARK: - Persistence Actions
+    @discardableResult
+    public func save() async throws -> Reminder {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else {
+            throw NSError(domain: "ReminderEditor", code: 400, userInfo: [NSLocalizedDescriptionKey: "Reminder title cannot be empty."])
+        }
+        
+        let sortedDates = sortedSelectedDates
+        guard let primaryDate = sortedDates.first else {
+            throw NSError(domain: "ReminderEditor", code: 400, userInfo: [NSLocalizedDescriptionKey: "Please select at least one date."])
+        }
+        let dateKeys = sortedDates.map { Reminder.dateFormatter.string(from: $0) }
+        
+        let optionalTime: Date? = hasTime ? time : nil
+        
+        if let id = reminderId {
+            guard let reminder = try await reminderRepository.fetch(by: id) else {
+                throw NSError(domain: "ReminderEditor", code: 404, userInfo: [NSLocalizedDescriptionKey: "Reminder to update was not found."])
+            }
+            
+            reminder.title = trimmedTitle
+            reminder.dateRequired = primaryDate
+            reminder.scheduledDateKeys = dateKeys
+            reminder.timeOptional = optionalTime
+            reminder.deadlineEnabled = deadlineEnabled
+            reminder.repeatWeekdays = repeatWeekdays
+            reminder.personID = selectedPerson?.id
+            
+            try await reminderRepository.update(reminder)
+            try? await notificationScheduler.scheduleNotifications(for: reminder, personName: selectedPerson?.name)
+            return reminder
+        } else {
+            let newReminder = Reminder(
+                title: trimmedTitle,
+                personID: selectedPerson?.id,
+                dateRequired: primaryDate,
+                timeOptional: optionalTime,
+                deadlineEnabled: deadlineEnabled,
+                repeatWeekdays: repeatWeekdays,
+                scheduledDateKeys: dateKeys
+            )
+            
+            try await reminderRepository.save(newReminder)
+            try? await notificationScheduler.scheduleNotifications(for: newReminder, personName: selectedPerson?.name)
+            return newReminder
+        }
+    }
+    
+    public func delete() async throws {
+        guard let id = reminderId else { return }
+        await notificationScheduler.cancelNotifications(for: id)
+        guard let reminder = try await reminderRepository.fetch(by: id) else { return }
+        if let fileName = reminder.photoFileName {
+            try? await photoStorage.deletePhoto(fileName: fileName)
+        }
+        try await reminderRepository.delete(reminder)
+    }
+}
