@@ -153,6 +153,18 @@ Unit tests use in-memory `SwiftData` containers and mocked notification schedule
 
 ---
 
+## Screenshots
+
+| Home | Multi-Date Editor | Photo Proof | People |
+| :---: | :---: | :---: | :---: | <img width="1206" height="2622" alt="Home screen" src="https://github.com/user-attachments/assets/63c6fd87-36d7-4fb1-a0e2-507a05acaf84" /> |
+<img width="1206" height="2622" alt="Settings" src="https://github.com/user-attachments/assets/398989b5-c2bd-4f7b-9293-88c0e9a0fdd0" /> | <img width="1206" height="2622" alt="Person Library" src="https://github.com/user-attachments/assets/2b283e2a-65f9-43d3-bae8-67d0aac9d074" /> | <img width="1206" height="2622" alt="Create a new person" src="https://github.com/user-attachments/assets/615f221a-4f70-4290-824d-36126e03a128" /> | <img width="1206" height="2622" alt="Create a new Reminder" src="https://github.com/user-attachments/assets/25b72d7a-b848-435b-8750-ae61f70d6363" /> | <img width="1206" height="2622" alt="A completion task sheet" src="https://github.com/user-attachments/assets/002a38d7-5150-4470-912a-f78759ceb059" />
+
+
+
+
+
+
+
 ## Author
 
 Created by **Kirill Maidanovich**
